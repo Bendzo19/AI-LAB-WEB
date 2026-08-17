@@ -1,0 +1,10 @@
+.env
+.env.local
+node_modules/
+.next/
+next-env.d.ts
+*.log
+tsconfig.tsbuildinfo
+.dev-db/
+AGENTS.md
+CLAUDE.md

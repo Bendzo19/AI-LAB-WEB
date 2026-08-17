@@ -1,0 +1,31 @@
+# netlify.toml
+#
+# Vďaka tomuto súboru nemusíš pri importe do Netlify nič nastavovať —
+# build príkaz, výstupný priečinok aj Next.js plugin si prečíta odtiaľto.
+#
+# Jediné, čo v Netlify doplníš ručne, sú premenné prostredia
+# (Site configuration -> Environment variables). Tie do gitu nepatria.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Next.js 16 build na Netlify
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Oficiálny Netlify plugin pre Next.js — rieši server funkcie,
+# image optimization aj routing. Netlify si ho doinštaluje sám.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Bezpečnostné hlavičky. Nič nerozbíjajú a web bez nich pôsobí neserióznejšie
+# pri akejkoľvek kontrole.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
