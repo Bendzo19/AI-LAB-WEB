@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #08080c;
+  --color-ink-900: #0b0b12;
+  --color-ink-800: #12121c;
+  --color-ink-700: #1a1a27;
+  --color-ink-600: #262636;
+  --color-brand-400: #a99cff;
+  --color-brand-500: #8b7cff;
+  --color-brand-600: #6d5ce6;
+  --color-discord: #5865f2;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-ink-950);
+    color: #e9e9f2;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Visible focus for keyboard users — do not remove, it is the only
+     affordance non-mouse users get. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: var(--color-brand-600);
+    color: #fff;
+  }
+}
+
+@layer utilities {
+  .glow {
+    background-image: radial-gradient(
+      60% 50% at 50% 0%,
+      rgba(139, 124, 255, 0.16) 0%,
+      transparent 70%
+    );
+  }
+  .prose-legal {
+    max-width: 68ch;
+  }
+  .prose-legal h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 2.25rem 0 0.5rem;
+  }
+  .prose-legal h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e9e9f2;
+    margin: 1.5rem 0 0.35rem;
+  }
+  .prose-legal p,
+  .prose-legal li {
+    color: #a9a9bd;
+    line-height: 1.7;
+    margin: 0.6rem 0;
+  }
+  .prose-legal ul {
+    list-style: disc;
+    padding-left: 1.35rem;
+  }
+  .prose-legal ol {
+    list-style: decimal;
+    padding-left: 1.35rem;
+  }
+  .prose-legal strong {
+    color: #e9e9f2;
+    font-weight: 600;
+  }
+  .prose-legal a {
+    color: var(--color-brand-400);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
