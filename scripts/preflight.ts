@@ -198,6 +198,92 @@ async function main(): Promise<void> {
     fatal++;
   }
 
+  /* ------------------------------------------------------------ GENEROVANIE */
+  console.log(`\n${B}5. Generovanie (kredity a fronta)${X}`);
+
+  try {
+    const { MODELY } = await import('../lib/generation/catalog');
+    const { prehladPoskytovatelov, mockZapnuty, katalogPreWeb } = await import(
+      '../lib/generation/providers'
+    );
+    const { uloziskoNastavene, typUloziska } = await import(
+      '../lib/generation/providers/storage'
+    );
+    const { GEN, callbacksReachable, appUrl } = await import('../lib/generation/config');
+
+    ok(`katalóg sa načítal — ${MODELY.length} modelov`);
+
+    if (mockZapnuty()) {
+      warn('GEN_MOCK=1 — všetko ide na mock poskytovateľa, nič sa reálne negeneruje');
+      hint('V produkcii túto premennú NENASTAVUJ.');
+    }
+
+    const nastaveni = prehladPoskytovatelov().filter((p) => p.nastaveny && p.id !== 'mock');
+    if (nastaveni.length === 0 && !mockZapnuty()) {
+      bad('žiadny poskytovateľ nemá kľúče — Štúdio nebude mať čo ponúknuť');
+      for (const p of prehladPoskytovatelov()) {
+        if (p.id !== 'mock') hint(`${p.id}: chýba ${p.coChyba}`);
+      }
+      fatal++;
+    } else {
+      ok(`poskytovatelia: ${nastaveni.map((p) => p.id).join(', ') || 'mock'}`);
+      const ponuka = katalogPreWeb().modely.length;
+      if (ponuka === 0) {
+        bad('katalóg pre web je prázdny — modely ukazujú na poskytovateľa bez kľúčov');
+        fatal++;
+      } else {
+        ok(`${ponuka} modelov je reálne spustiteľných`);
+      }
+    }
+
+    if (uloziskoNastavene()) ok(`úložisko výstupov: ${typUloziska()}`);
+    else {
+      warn('úložisko nie je nastavené — nahrávanie súborov a priame modely (Google/OpenAI) nepôjdu');
+      hint('kie.ai funguje aj bez neho, lebo vracia hotové odkazy.');
+      hint('Pre zvyšok: GEN_STORAGE=supabase + SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY');
+    }
+
+    if (callbacksReachable()) {
+      ok(`callbacky od poskytovateľa pôjdu na ${appUrl()}`);
+    } else {
+      warn(`APP_URL="${appUrl()}" nie je verejná adresa — callbacky nedorazia`);
+      hint('Na localhoste je to v poriadku: výsledok sa dotiahne dopytom pri pohľade na úlohu.');
+      hint('V produkcii MUSÍ byť APP_URL verejná https adresa, inak sa čaká zbytočne dlho.');
+    }
+
+    const neovereny = MODELY.filter((m) => m.overit).length;
+    if (neovereny > 0) {
+      warn(`${neovereny} modelov má neoverený názov u poskytovateľa`);
+      hint('npm run verify:models — vypíše ktoré a ako ich overiť');
+    }
+
+    ok(
+      `stropy: ${GEN.maxInflightPerUser}/užívateľa, ${GEN.maxInflightTotal} spolu, ` +
+        `${GEN.maxSubmitsPerMinute} odoslaní za minútu`,
+    );
+
+    const { pool: p2 } = await import('../lib/db');
+    const { rows } = await p2.query<{ tabulka: string }>(
+      `SELECT table_name AS tabulka FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name IN ('credit_accounts','credit_ledger','generation_jobs','generation_events')`,
+    );
+    if (rows.length === 4) ok('tabuľky pre kredity a fronta existujú');
+    else {
+      bad(`v databáze chýbajú tabuľky (našiel som ${rows.length} zo 4)`);
+      hint('npm run db:push   (alebo psql "$DATABASE_URL" -f db/schema.sql)');
+      fatal++;
+    }
+
+    if (!process.env.CRON_SECRET && process.env.NODE_ENV === 'production') {
+      bad('CRON_SECRET nie je nastavené — /api/cron/generation by bol verejný');
+      fatal++;
+    }
+  } catch (err) {
+    bad(`generovanie sa nedá skontrolovať: ${err instanceof Error ? err.message : String(err)}`);
+    fatal++;
+  }
+
   /* ---------------------------------------------------------------- VÝSLEDOK */
   console.log('');
   if (fatal) {

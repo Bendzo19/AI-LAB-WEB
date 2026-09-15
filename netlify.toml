@@ -20,6 +20,16 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Naplánované funkcie (netlify/functions/*.mjs) — rozvrh si berú z `config`
+# priamo v súbore funkcie. Sú to len „budíky", ktoré zavolajú route-y appky:
+#
+#   cron-generation   každú minútu  -> /api/cron/generation  (údržba fronty)
+#   cron-sync-roles   každú hodinu  -> /api/cron/sync-roles  (Discord roly)
+#
+# Obe route-y sú chránené CRON_SECRET-om, ktorý funkcie posielajú v hlavičke.
+[functions]
+  directory = "netlify/functions"
+
 # Bezpečnostné hlavičky. Nič nerozbíjajú a web bez nich pôsobí neserióznejšie
 # pri akejkoľvek kontrole.
 [[headers]]

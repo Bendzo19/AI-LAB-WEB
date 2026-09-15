@@ -46,14 +46,51 @@ kompiluje. Stránky boli vizuálne skontrolované v Chromium.
 
 ```
 ○ /            static    landing page
-○ /pricing     static    predplatné + FAQ
+○ /pricing     static    predplatné + kreditové balíčky + FAQ
 ○ /terms       static    Podmienky používania      ← Discord verifikácia
 ○ /privacy     static    Zásady ochrany os. údajov ← Discord verifikácia
 ƒ /account     dynamic   prepojenie Discordu
+ƒ /studio      dynamic   generovanie (kredity, fronta, výsledky)
 ƒ /api/discord/link · callback · unlink
 ƒ /api/stripe/webhook
 ƒ /api/cron/sync-roles
+ƒ /api/models · /api/generate · /api/generate/<id> · /api/upload
+ƒ /api/credits · /api/credits/checkout
+ƒ /api/webhooks/generation/<poskytovateľ>
+ƒ /api/cron/generation
 ```
+
+## Generovanie — čítaj [docs/GENEROVANIE.md](docs/GENEROVANIE.md)
+
+Web generuje fotky, videá a hlas cez kreditový systém, ktorý je postavený
+na **súbežnosť**: sto ľudí naraz spustí sto generovaní naraz. Žiadny rad,
+žiadne čakanie jeden na druhého.
+
+Krátko, ako to funguje:
+
+- odoslanie je krátky request (~300 ms): overí vstup, **zarezervuje
+  kredity**, založí úlohu a pošle zadanie poskytovateľovi,
+- generovanie beží u poskytovateľa, náš server pri tom nič nedrží,
+- **callback** doručí výsledok a doúčtuje — čo sa neminulo, vráti sa,
+- zlyhané generovanie **nestojí nič**, kredity idú späť automaticky.
+
+Jediné, čo sa serializuje, je riadok účtu jedného užívateľa — takže dva
+jeho súbežné behy nevedia minúť tie isté kredity dvakrát, ale dvaja rôzni
+ľudia sa nestretnú nikdy.
+
+```bash
+npm run loadtest      # 100 ľudí naraz proti mocku: overí súbeh aj účtovníctvo
+npm run verify:models # kontrola názvov modelov u poskytovateľa
+```
+
+**Pred spustením naostro:** `npm run verify:models -- --live` — časť názvov
+modelov v katalógu je ešte neoverená a zlý názov znamená chybu až
+u zákazníka.
+
+Podporovaní poskytovatelia: **kie.ai** (predvolený, jeden kľúč na desiatky
+modelov) a **Google / OpenAI priamo** — prepnutie je jedna premenná
+`GEN_MODEL_ROUTING`, bez zmeny kódu. Podrobnosti aj s porovnaním
+v [docs/GENEROVANIE.md](docs/GENEROVANIE.md).
 
 ## Čo je už nastavené na Discorde
 

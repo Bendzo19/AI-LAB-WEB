@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "check": "tsx --env-file=.env scripts/preflight.ts",
     "verify:discord": "tsx --env-file=.env scripts/verify-setup.ts",
-    "db:push": "psql \"$DATABASE_URL\" -f db/schema.sql"
+    "db:push": "psql \"$DATABASE_URL\" -f db/schema.sql",
+    "loadtest": "tsx scripts/loadtest-generation.ts",
+    "verify:models": "tsx --env-file=.env scripts/verify-models.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.5",

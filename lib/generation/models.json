@@ -1,0 +1,2305 @@
+{
+  "kredit_usd": 0.005,
+  "modely": [
+    {
+      "id": "kie-z-image",
+      "druh": "foto",
+      "rodina": "zimage",
+      "nazov": "Z-Image (cloud)",
+      "popis": "Ten istý Z-Image, ktorý máš v Comfy na vlastnej karte — len bez inštalácie. Najlacnejší obrázok v ponuke.",
+      "poskytovatel": "kie",
+      "provider_model": "z-image/turbo",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 2,
+      "usd": 0.004,
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 1000,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam."
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16"
+          ],
+          "predvolene": "1:1"
+        }
+      ]
+    },
+    {
+      "id": "nano-banana-edit",
+      "druh": "foto",
+      "rodina": "",
+      "nazov": "Nano Banana · úprava",
+      "popis": "Uprav hotovú fotku textom: oblečenie, pozadie, svetlo.",
+      "poskytovatel": "kie",
+      "provider_model": "google/nano-banana-edit",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 4,
+      "usd": 0.02,
+      "nsfw": false,
+      "moderacia": "google",
+      "moderacia_veta": "Obsahovú kontrolu tohto modelu robí Google a nedá sa vypnúť. Odvážnejšie zadanie samo o sebe mu nevadí a referenčná fotka tiež nie — odmieta ich SPOLU.",
+      "stitky": [
+        "edit",
+        "prísna moderácia"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt",
+        "image_urls"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 5000
+        },
+        {
+          "meno": "image_urls",
+          "nadpis": "Obrázky",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_suborov": 10
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "9:16",
+            "16:9",
+            "3:4",
+            "4:3",
+            "3:2",
+            "2:3",
+            "5:4",
+            "4:5",
+            "21:9",
+            "auto"
+          ],
+          "predvolene": "1:1"
+        },
+        {
+          "meno": "output_format",
+          "nadpis": "Formát súboru",
+          "druh": "vyber",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "moznosti": [
+            "png",
+            "jpeg"
+          ],
+          "predvolene": "png"
+        }
+      ]
+    },
+    {
+      "id": "kie-grok-image",
+      "druh": "foto",
+      "rodina": "grok",
+      "nazov": "Grok Imagine Image 2.0",
+      "popis": "xAI. Rýchle a lacné obrázky na sociálne siete.",
+      "poskytovatel": "kie",
+      "provider_model": "grok/image",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 4,
+      "usd": 0.02,
+      "nsfw": false,
+      "moderacia": "volna",
+      "stitky": [],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt",
+        "aspect_ratio"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": true,
+          "moznosti": [
+            "1:1",
+            "2:3",
+            "3:2",
+            "16:9",
+            "9:16"
+          ],
+          "predvolene": "1:1"
+        }
+      ]
+    },
+    {
+      "id": "kie-grok-image-edit",
+      "druh": "foto",
+      "rodina": "grok",
+      "nazov": "Grok Imagine · úprava",
+      "popis": "xAI. Úprava fotky podľa zadania — drží tvár z referencie a nemá prísnu moderáciu.",
+      "poskytovatel": "kie",
+      "provider_model": "grok/image-edit",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 4,
+      "usd": 0.02,
+      "nsfw": true,
+      "moderacia": "prisna",
+      "moderacia_veta": "Tento model má prepínač moderácie, ale odvážnejšie zadanie s referenčnou fotkou odmieta aj tak. Na odvážnejšie vezmi Seedream.",
+      "stitky": [
+        "edit",
+        "prísna moderácia"
+      ],
+      "overene": "2026-08-29",
+      "dostupny": true,
+      "povinne": [
+        "image_urls"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_znakov": 390000
+        },
+        {
+          "meno": "image_urls",
+          "nadpis": "Obrázky",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_suborov": 5
+        }
+      ]
+    },
+    {
+      "id": "flux-2-pro",
+      "druh": "foto",
+      "rodina": "flux",
+      "nazov": "FLUX 2 Pro",
+      "popis": "Druhá generácia FLUXu. Detail a tlačové rozlíšenie.",
+      "poskytovatel": "kie",
+      "provider_model": "flux/2-pro",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 6,
+      "usd": 0.025,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "1K": 6,
+        "2K": 8
+      },
+      "cena_zaklad": "1K",
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "cena podľa voľby",
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 5000
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "3:2",
+            "2:3"
+          ],
+          "predvolene": "1:1"
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1K",
+            "2K"
+          ],
+          "predvolene": "1K",
+          "cena": true
+        }
+      ]
+    },
+    {
+      "id": "gpt-image-2",
+      "druh": "foto",
+      "rodina": "",
+      "nazov": "GPT Image 2",
+      "popis": "OpenAI. Najlepšie rozumie dlhému zadaniu a scéne.",
+      "poskytovatel": "kie",
+      "provider_model": "openai/gpt-image-2",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 6,
+      "usd": 0.03,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "1K": 6,
+        "2K": 10,
+        "4K": 16
+      },
+      "cena_zaklad": "1K",
+      "nsfw": false,
+      "moderacia": "openai",
+      "moderacia_veta": "Obsahovú kontrolu tohto modelu robí OpenAI a nedá sa vypnúť.",
+      "stitky": [
+        "4K",
+        "cena podľa voľby",
+        "prísna moderácia"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 20000
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "auto",
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "5:4",
+            "4:5",
+            "16:9",
+            "9:16",
+            "2:1",
+            "1:2",
+            "21:9",
+            "9:21"
+          ],
+          "predvolene": "auto"
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1K",
+            "2K",
+            "4K"
+          ],
+          "predvolene": "1K",
+          "cena": true
+        },
+        {
+          "meno": "background",
+          "nadpis": "Pozadie",
+          "druh": "vyber",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "moznosti": [
+            "transparent",
+            "opaque",
+            "auto"
+          ],
+          "predvolene": "auto"
+        }
+      ]
+    },
+    {
+      "id": "kie-qwen-image",
+      "druh": "foto",
+      "rodina": "qwen",
+      "nazov": "Qwen Image",
+      "popis": "Alibaba. Silný na text v obrázku a na ázijské tváre.",
+      "poskytovatel": "kie",
+      "provider_model": "qwen/image",
+      "overit": true,
+      "jednotka": "megapixels",
+      "jednotka_zaklad": 1,
+      "kredity": 6,
+      "usd": 0.021,
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 5000
+        },
+        {
+          "meno": "image_size",
+          "nadpis": "Veľkosť",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "square",
+            "square_hd",
+            "portrait_4_3",
+            "portrait_16_9",
+            "landscape_4_3",
+            "landscape_16_9"
+          ],
+          "predvolene": "square_hd"
+        },
+        {
+          "meno": "negative_prompt",
+          "nadpis": "Čo tam nechceš",
+          "druh": "plocha",
+          "riadky": 2,
+          "skupina": "pokrocile",
+          "povinne": false,
+          "max_znakov": 500
+        },
+        {
+          "meno": "output_format",
+          "nadpis": "Formát súboru",
+          "druh": "vyber",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "moznosti": [
+            "png",
+            "jpeg"
+          ],
+          "predvolene": "png"
+        },
+        {
+          "meno": "acceleration",
+          "nadpis": "Zrýchlenie",
+          "druh": "vyber",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "moznosti": [
+            "none",
+            "regular",
+            "high"
+          ],
+          "predvolene": "none",
+          "napoveda": "Rýchlejšie je lacnejšie na čase, nie na kvalite."
+        },
+        {
+          "meno": "guidance_scale",
+          "nadpis": "Držať sa promptu",
+          "druh": "posuvnik",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "min": 0,
+          "max": 20,
+          "krok": 0.1,
+          "predvolene": 2.5
+        },
+        {
+          "meno": "num_inference_steps",
+          "nadpis": "Krokov",
+          "druh": "posuvnik",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "min": 2,
+          "max": 250,
+          "krok": 1,
+          "predvolene": 30
+        },
+        {
+          "meno": "seed",
+          "nadpis": "Seed",
+          "druh": "seed",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "napoveda": "Rovnaký seed + rovnaký prompt = rovnaký výsledok."
+        }
+      ]
+    },
+    {
+      "id": "kie-seedream-5-pro",
+      "druh": "foto",
+      "rodina": "seedream",
+      "nazov": "Seedream 5 Pro",
+      "popis": "Novší než Seedream 4.5. Fotorealistická koža a telo.",
+      "poskytovatel": "kie",
+      "provider_model": "seedream/5-pro",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 8,
+      "usd": 0.035,
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 5000
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "2:3",
+            "3:2",
+            "21:9"
+          ],
+          "predvolene": "1:1"
+        },
+        {
+          "meno": "quality",
+          "nadpis": "Kvalita",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "basic",
+            "high"
+          ],
+          "predvolene": "basic"
+        },
+        {
+          "meno": "output_format",
+          "nadpis": "Formát súboru",
+          "druh": "vyber",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "moznosti": [
+            "png",
+            "jpeg"
+          ],
+          "predvolene": "png"
+        }
+      ]
+    },
+    {
+      "id": "seedream-45",
+      "druh": "foto",
+      "rodina": "seedream",
+      "nazov": "Seedream 4.5",
+      "popis": "ByteDance. Najsilnejší na fotorealistickú kožu a telo.",
+      "poskytovatel": "kie",
+      "provider_model": "seedream/4.5",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 8,
+      "usd": 0.0325,
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 3000
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "2:3",
+            "3:2",
+            "21:9"
+          ],
+          "predvolene": "1:1"
+        },
+        {
+          "meno": "quality",
+          "nadpis": "Kvalita",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "basic",
+            "high"
+          ],
+          "predvolene": "basic"
+        }
+      ]
+    },
+    {
+      "id": "seedream-4-edit",
+      "druh": "foto",
+      "rodina": "seedream",
+      "nazov": "Seedream · úprava",
+      "popis": "Úprava fotky, ktorá drží tvár lepšie než väčšina.",
+      "poskytovatel": "kie",
+      "provider_model": "seedream/4.5-edit",
+      "overit": false,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 8,
+      "usd": 0.0325,
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "edit",
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt",
+        "image_urls"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 3000
+        },
+        {
+          "meno": "image_urls",
+          "nadpis": "Obrázky",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_suborov": 14
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "2:3",
+            "3:2",
+            "21:9"
+          ],
+          "predvolene": "1:1"
+        },
+        {
+          "meno": "quality",
+          "nadpis": "Kvalita",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "basic",
+            "high"
+          ],
+          "predvolene": "basic"
+        }
+      ]
+    },
+    {
+      "id": "nano-banana-2",
+      "druh": "foto",
+      "rodina": "",
+      "nazov": "Nano Banana 2",
+      "popis": "Lacnejší súrodenec NBP. Na rýchle varianty a skúšanie.",
+      "poskytovatel": "kie",
+      "provider_model": "nano-banana-2",
+      "overit": false,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 8,
+      "usd": 0.04,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "1K": 8,
+        "2K": 12,
+        "4K": 18
+      },
+      "cena_zaklad": "1K",
+      "nsfw": false,
+      "moderacia": "google",
+      "moderacia_veta": "Obsahovú kontrolu tohto modelu robí Google a nedá sa vypnúť.",
+      "stitky": [
+        "aj edit",
+        "4K",
+        "cena podľa voľby",
+        "prísna moderácia"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 20000
+        },
+        {
+          "meno": "image_input",
+          "nadpis": "Obrázky na úpravu",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 14,
+          "napoveda": "Nepovinné. S obrázkom model upravuje, bez neho generuje z textu."
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9",
+            "21:9",
+            "auto"
+          ],
+          "predvolene": "auto"
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1K",
+            "2K",
+            "4K"
+          ],
+          "predvolene": "1K",
+          "cena": true
+        },
+        {
+          "meno": "output_format",
+          "nadpis": "Formát súboru",
+          "druh": "vyber",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "moznosti": [
+            "png",
+            "jpg"
+          ],
+          "predvolene": "jpg"
+        }
+      ]
+    },
+    {
+      "id": "nano-banana-pro",
+      "druh": "foto",
+      "rodina": "",
+      "nazov": "Nano Banana Pro",
+      "popis": "NBP. Najlepšie drží tvár aj text v obrázku. Toto je ten, ktorý chceš.",
+      "poskytovatel": "kie",
+      "provider_model": "google/nano-banana-pro",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 18,
+      "usd": 0.09,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "1K": 18,
+        "2K": 18,
+        "4K": 24
+      },
+      "cena_zaklad": "1K",
+      "nsfw": false,
+      "moderacia": "google",
+      "moderacia_veta": "Obsahovú kontrolu tohto modelu robí Google a nedá sa vypnúť.",
+      "stitky": [
+        "aj edit",
+        "4K",
+        "cena podľa voľby",
+        "prísna moderácia"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 10000
+        },
+        {
+          "meno": "image_input",
+          "nadpis": "Obrázky na úpravu",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 8,
+          "napoveda": "Nepovinné. S obrázkom model upravuje, bez neho generuje z textu."
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9",
+            "21:9",
+            "auto"
+          ],
+          "predvolene": "1:1"
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1K",
+            "2K",
+            "4K"
+          ],
+          "predvolene": "1K",
+          "cena": true
+        },
+        {
+          "meno": "output_format",
+          "nadpis": "Formát súboru",
+          "druh": "vyber",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "moznosti": [
+            "png",
+            "jpg"
+          ],
+          "predvolene": "png"
+        }
+      ]
+    },
+    {
+      "id": "kie-grok-video",
+      "druh": "video",
+      "rodina": "grok",
+      "nazov": "Grok Imagine · z textu",
+      "popis": "xAI video. Najlacnejší klip v ponuke — na virálne pokusy.",
+      "poskytovatel": "kie",
+      "provider_model": "grok/video",
+      "overit": true,
+      "jednotka": "seconds",
+      "jednotka_zaklad": 5,
+      "jednotka_pole": "duration",
+      "kredity": 12,
+      "usd": 0.06,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "480p": 12,
+        "720p": 24,
+        "1080p": 40
+      },
+      "cena_zaklad": "480p",
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "cena podľa voľby",
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam.",
+          "max_znakov": 5000
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "2:3",
+            "3:2",
+            "1:1",
+            "16:9",
+            "9:16"
+          ],
+          "predvolene": "9:16"
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "480p",
+            "720p",
+            "1080p"
+          ],
+          "predvolene": "480p",
+          "cena": true
+        },
+        {
+          "meno": "mode",
+          "nadpis": "Režim",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "fun",
+            "normal",
+            "spicy"
+          ],
+          "predvolene": "normal"
+        },
+        {
+          "meno": "duration",
+          "nadpis": "Dĺžka",
+          "druh": "posuvnik",
+          "jednotka": "s",
+          "skupina": "zaklad",
+          "povinne": false,
+          "min": 6,
+          "max": 30,
+          "krok": 1,
+          "predvolene": 6,
+          "cena": true
+        }
+      ]
+    },
+    {
+      "id": "kie-grok-video-i2v",
+      "druh": "video",
+      "rodina": "grok",
+      "nazov": "Grok Imagine · z fotky",
+      "popis": "Rozhýbe tvoju fotku. Ten istý Grok, vstupom je obrázok.",
+      "poskytovatel": "kie",
+      "provider_model": "grok/video-image-to-video",
+      "overit": true,
+      "jednotka": "seconds",
+      "jednotka_zaklad": 5,
+      "jednotka_pole": "duration",
+      "kredity": 12,
+      "usd": 0.06,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "480p": 12,
+        "720p": 24
+      },
+      "cena_zaklad": "480p",
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "aj z fotky",
+        "cena podľa voľby",
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "image_urls"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": false,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam.",
+          "max_znakov": 5000
+        },
+        {
+          "meno": "image_urls",
+          "nadpis": "Obrázky",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_suborov": 7
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "2:3",
+            "3:2",
+            "1:1",
+            "16:9",
+            "9:16"
+          ],
+          "predvolene": "16:9"
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "480p",
+            "720p"
+          ],
+          "predvolene": "480p",
+          "cena": true
+        },
+        {
+          "meno": "mode",
+          "nadpis": "Režim",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "fun",
+            "normal",
+            "spicy"
+          ],
+          "predvolene": "normal"
+        },
+        {
+          "meno": "duration",
+          "nadpis": "Dĺžka",
+          "druh": "posuvnik",
+          "jednotka": "s",
+          "skupina": "zaklad",
+          "povinne": false,
+          "min": 6,
+          "max": 30,
+          "krok": 1,
+          "predvolene": 6,
+          "cena": true
+        }
+      ]
+    },
+    {
+      "id": "kie-hailuo-23",
+      "druh": "video",
+      "rodina": "h3",
+      "nazov": "Hailuo 2.3",
+      "popis": "MiniMax v najnovšej verzii. Prirodzený pohyb postavy z fotky.",
+      "poskytovatel": "kie",
+      "provider_model": "minimax/hailuo-2.3",
+      "overit": true,
+      "jednotka": "videos",
+      "jednotka_zaklad": 1,
+      "kredity": 30,
+      "usd": 0.15,
+      "cena_pole": "duration",
+      "ceny_pola": {
+        "6": 30,
+        "10": 50
+      },
+      "cena_zaklad": "6",
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "z fotky",
+        "cena podľa voľby",
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt",
+        "image_url"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam.",
+          "max_znakov": 5000
+        },
+        {
+          "meno": "image_url",
+          "nadpis": "Obrázok",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "zaklad",
+          "povinne": true
+        },
+        {
+          "meno": "duration",
+          "nadpis": "Dĺžka",
+          "druh": "vyber",
+          "jednotka": "s",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "6",
+            "10"
+          ],
+          "predvolene": "6",
+          "cena": true
+        }
+      ]
+    },
+    {
+      "id": "kie-hailuo-23-pro",
+      "druh": "video",
+      "rodina": "h3",
+      "nazov": "Hailuo 2.3 Pro (1080p)",
+      "popis": "To isté v 1080p a s väčšou vernosťou detailu.",
+      "poskytovatel": "kie",
+      "provider_model": "minimax/hailuo-2.3-pro",
+      "overit": true,
+      "jednotka": "videos",
+      "jednotka_zaklad": 1,
+      "kredity": 80,
+      "usd": 0.4,
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "z fotky",
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt",
+        "image_url"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam.",
+          "max_znakov": 5000
+        },
+        {
+          "meno": "image_url",
+          "nadpis": "Obrázok",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "zaklad",
+          "povinne": true
+        }
+      ]
+    },
+    {
+      "id": "kling-3",
+      "druh": "video",
+      "rodina": "kling",
+      "nazov": "Kling 3.0",
+      "popis": "Najlepší pohyb postavy. Z textu aj z fotky, jeden model.",
+      "poskytovatel": "kie",
+      "provider_model": "kling/v3",
+      "overit": true,
+      "jednotka": "seconds",
+      "jednotka_zaklad": 5,
+      "jednotka_pole": "duration",
+      "kredity": 90,
+      "usd": 0.45,
+      "cena_pole": "mode",
+      "ceny_pola": {
+        "std": 70,
+        "pro": 90,
+        "4K": 336
+      },
+      "cena_zaklad": "pro",
+      "nsfw": false,
+      "moderacia": "volna",
+      "stitky": [
+        "aj z fotky",
+        "4K",
+        "cena podľa voľby"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam."
+        },
+        {
+          "meno": "image_urls",
+          "nadpis": "Obrázky",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 4
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ],
+          "predvolene": "16:9"
+        },
+        {
+          "meno": "mode",
+          "nadpis": "Režim",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "std",
+            "pro",
+            "4K"
+          ],
+          "predvolene": "pro",
+          "cena": true
+        },
+        {
+          "meno": "duration",
+          "nadpis": "Dĺžka",
+          "druh": "vyber",
+          "jednotka": "s",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15"
+          ],
+          "predvolene": "5",
+          "cena": true
+        }
+      ]
+    },
+    {
+      "id": "kling-3-zvuk",
+      "druh": "video",
+      "rodina": "kling",
+      "nazov": "Kling 3.0 · so zvukom",
+      "popis": "To isté aj so zvukom priamo z modelu.",
+      "poskytovatel": "kie",
+      "provider_model": "kling/v3-audio",
+      "overit": true,
+      "jednotka": "seconds",
+      "jednotka_zaklad": 5,
+      "jednotka_pole": "duration",
+      "kredity": 136,
+      "usd": 0.675,
+      "cena_pole": "mode",
+      "ceny_pola": {
+        "std": 100,
+        "pro": 136,
+        "4K": 336
+      },
+      "cena_zaklad": "pro",
+      "nsfw": false,
+      "moderacia": "volna",
+      "stitky": [
+        "aj z fotky",
+        "zvuk",
+        "4K",
+        "cena podľa voľby"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam."
+        },
+        {
+          "meno": "image_urls",
+          "nadpis": "Obrázky",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 4
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ],
+          "predvolene": "16:9"
+        },
+        {
+          "meno": "mode",
+          "nadpis": "Režim",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "std",
+            "pro",
+            "4K"
+          ],
+          "predvolene": "pro",
+          "cena": true
+        },
+        {
+          "meno": "duration",
+          "nadpis": "Dĺžka",
+          "druh": "vyber",
+          "jednotka": "s",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15"
+          ],
+          "predvolene": "5",
+          "cena": true
+        }
+      ]
+    },
+    {
+      "id": "kie-wan-30",
+      "druh": "video",
+      "rodina": "wan",
+      "nazov": "Wan 3.0",
+      "popis": "Najnovší Wan. Referencie na tvár, obraz aj zvuk v jednom modeli.",
+      "poskytovatel": "kie",
+      "provider_model": "wan/3.0",
+      "overit": true,
+      "jednotka": "seconds",
+      "jednotka_zaklad": 5,
+      "jednotka_pole": "duration",
+      "kredity": 160,
+      "usd": 0.8,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "480P": 40,
+        "720P": 160,
+        "1080P": 160
+      },
+      "cena_zaklad": "1080P",
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "aj z fotky",
+        "zvuk",
+        "cena podľa voľby",
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": false,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam.",
+          "max_znakov": 20000
+        },
+        {
+          "meno": "first_frame_url",
+          "nadpis": "Prvá snímka",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "zaklad",
+          "povinne": false
+        },
+        {
+          "meno": "reference_image_urls",
+          "nadpis": "Referenčné obrázky",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 10,
+          "napoveda": "Tvár a štýl, ktoré má držať."
+        },
+        {
+          "meno": "reference_video_urls",
+          "nadpis": "Referenčné videá",
+          "druh": "subor",
+          "co": "video",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 5
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "adaptive",
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16"
+          ],
+          "predvolene": "adaptive"
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "480P",
+            "720P",
+            "1080P"
+          ],
+          "predvolene": "1080P",
+          "cena": true
+        },
+        {
+          "meno": "duration",
+          "nadpis": "Dĺžka",
+          "druh": "posuvnik",
+          "jednotka": "s",
+          "skupina": "zaklad",
+          "povinne": false,
+          "predvolene": 5,
+          "min": 2,
+          "max": 30,
+          "krok": 1,
+          "cena": true
+        },
+        {
+          "meno": "last_frame_url",
+          "nadpis": "Posledná snímka",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "pokrocile",
+          "povinne": false
+        },
+        {
+          "meno": "reference_audio_urls",
+          "nadpis": "Referenčný zvuk",
+          "druh": "subor",
+          "co": "zvuk",
+          "viac": true,
+          "skupina": "pokrocile",
+          "povinne": false,
+          "max_suborov": 5
+        },
+        {
+          "meno": "seed",
+          "nadpis": "Seed",
+          "druh": "seed",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "min": 0,
+          "max": 2147483647,
+          "napoveda": "Rovnaký seed + rovnaký prompt = rovnaký výsledok."
+        },
+        {
+          "meno": "audio",
+          "nadpis": "Zvuk z modelu",
+          "druh": "prepinac",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "predvolene": true
+        }
+      ]
+    },
+    {
+      "id": "kie-seedance-2",
+      "druh": "video",
+      "rodina": "seedance",
+      "nazov": "Seedance 2",
+      "popis": "Motor za UGC. Rozlíšenie si vyberieš, cena sa mení s ním.",
+      "poskytovatel": "kie",
+      "provider_model": "seedance/2.0",
+      "overit": true,
+      "jednotka": "seconds",
+      "jednotka_zaklad": 5,
+      "jednotka_pole": "duration",
+      "kredity": 206,
+      "usd": 1.025,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "480p": 96,
+        "720p": 206,
+        "1080p": 510,
+        "4k": 1040
+      },
+      "cena_zaklad": "720p",
+      "ceny_s_videom": {
+        "480p": 58,
+        "720p": 126,
+        "1080p": 310,
+        "4k": 640
+      },
+      "video_polia": [
+        "reference_video_urls"
+      ],
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "aj z fotky",
+        "zvuk",
+        "4K",
+        "cena podľa voľby",
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": false,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam.",
+          "max_znakov": 20000
+        },
+        {
+          "meno": "first_frame_url",
+          "nadpis": "Prvá snímka",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "zaklad",
+          "povinne": false
+        },
+        {
+          "meno": "reference_image_urls",
+          "nadpis": "Referenčné obrázky",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 9,
+          "napoveda": "Tvár a štýl, ktoré má držať."
+        },
+        {
+          "meno": "reference_video_urls",
+          "nadpis": "Referenčné videá",
+          "druh": "subor",
+          "co": "video",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 3,
+          "cena": true
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "21:9",
+            "adaptive"
+          ],
+          "predvolene": "16:9"
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "480p",
+            "720p",
+            "1080p",
+            "4k"
+          ],
+          "predvolene": "720p",
+          "cena": true
+        },
+        {
+          "meno": "duration",
+          "nadpis": "Dĺžka",
+          "druh": "posuvnik",
+          "jednotka": "s",
+          "skupina": "zaklad",
+          "povinne": false,
+          "predvolene": 5,
+          "min": 4,
+          "max": 15,
+          "krok": 1,
+          "cena": true
+        },
+        {
+          "meno": "generate_audio",
+          "nadpis": "Aj zvuk",
+          "druh": "prepinac",
+          "skupina": "zaklad",
+          "povinne": false,
+          "predvolene": true
+        },
+        {
+          "meno": "last_frame_url",
+          "nadpis": "Posledná snímka",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "pokrocile",
+          "povinne": false
+        },
+        {
+          "meno": "reference_audio_urls",
+          "nadpis": "Referenčný zvuk",
+          "druh": "subor",
+          "co": "zvuk",
+          "viac": true,
+          "skupina": "pokrocile",
+          "povinne": false,
+          "max_suborov": 3
+        }
+      ]
+    },
+    {
+      "id": "kie-seedance-25",
+      "druh": "video",
+      "rodina": "seedance",
+      "nazov": "Seedance 2.5",
+      "popis": "Najpokročilejší video model dneška. Nástupca Seedance 2.",
+      "poskytovatel": "kie",
+      "provider_model": "seedance/2.5",
+      "overit": true,
+      "jednotka": "seconds",
+      "jednotka_zaklad": 5,
+      "jednotka_pole": "duration",
+      "kredity": 316,
+      "usd": 1.575,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "480p": 140,
+        "720p": 316,
+        "1080p": 570
+      },
+      "cena_zaklad": "720p",
+      "ceny_s_videom": {
+        "480p": 86,
+        "720p": 190,
+        "1080p": 344
+      },
+      "video_polia": [
+        "reference_video_urls"
+      ],
+      "nsfw": true,
+      "moderacia": "vypinatelna",
+      "stitky": [
+        "aj z fotky",
+        "zvuk",
+        "cena podľa voľby",
+        "NSFW možné"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": false,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam.",
+          "max_znakov": 30000
+        },
+        {
+          "meno": "first_frame_url",
+          "nadpis": "Prvá snímka",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "zaklad",
+          "povinne": false
+        },
+        {
+          "meno": "reference_image_urls",
+          "nadpis": "Referenčné obrázky",
+          "druh": "subor",
+          "co": "obrazok",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 30,
+          "napoveda": "Tvár a štýl, ktoré má držať."
+        },
+        {
+          "meno": "reference_video_urls",
+          "nadpis": "Referenčné videá",
+          "druh": "subor",
+          "co": "video",
+          "viac": true,
+          "skupina": "zaklad",
+          "povinne": false,
+          "max_suborov": 10,
+          "cena": true
+        },
+        {
+          "meno": "aspect_ratio",
+          "nadpis": "Pomer strán",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "21:9",
+            "adaptive"
+          ],
+          "predvolene": "adaptive"
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "480p",
+            "720p",
+            "1080p"
+          ],
+          "predvolene": "720p",
+          "cena": true
+        },
+        {
+          "meno": "duration",
+          "nadpis": "Dĺžka",
+          "druh": "posuvnik",
+          "jednotka": "s",
+          "skupina": "zaklad",
+          "povinne": false,
+          "predvolene": 5,
+          "min": 4,
+          "max": 30,
+          "krok": 1,
+          "cena": true
+        },
+        {
+          "meno": "generate_audio",
+          "nadpis": "Aj zvuk",
+          "druh": "prepinac",
+          "skupina": "zaklad",
+          "povinne": false,
+          "predvolene": true
+        },
+        {
+          "meno": "last_frame_url",
+          "nadpis": "Posledná snímka",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "pokrocile",
+          "povinne": false
+        },
+        {
+          "meno": "output_format",
+          "nadpis": "Formát súboru",
+          "druh": "vyber",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "moznosti": [
+            "mp4",
+            "mov"
+          ],
+          "predvolene": "mp4"
+        },
+        {
+          "meno": "reference_audio_urls",
+          "nadpis": "Referenčný zvuk",
+          "druh": "subor",
+          "co": "zvuk",
+          "viac": true,
+          "skupina": "pokrocile",
+          "povinne": false,
+          "max_suborov": 10
+        }
+      ]
+    },
+    {
+      "id": "tts-hlas",
+      "druh": "zvuk",
+      "rodina": "",
+      "nazov": "Hlas · ElevenLabs",
+      "popis": "Reč z textu. Účtuje sa po tisíckach znakov skutočného textu.",
+      "poskytovatel": "kie",
+      "provider_model": "elevenlabs/tts",
+      "overit": true,
+      "jednotka": "1000 characters",
+      "jednotka_zaklad": 1000,
+      "jednotka_pole": "text",
+      "jednotka_z_dlzky": true,
+      "kredity": 6,
+      "usd": 0.03,
+      "nsfw": false,
+      "moderacia": "volna",
+      "stitky": [],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "text"
+      ],
+      "polia": [
+        {
+          "meno": "text",
+          "nadpis": "Text na prečítanie",
+          "druh": "plocha",
+          "riadky": 5,
+          "skupina": "zaklad",
+          "povinne": true,
+          "max_znakov": 5000,
+          "cena": true
+        },
+        {
+          "meno": "voice",
+          "nadpis": "Hlas",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "predvolene": "EkK5I93UQWFDigLMpZcX",
+          "moznosti": [
+            "EkK5I93UQWFDigLMpZcX",
+            "Z3R5wn05IrDiVCyEkUrK",
+            "NNl6r8mD7vthiJatiJt1",
+            "YOq2y2Up4RgXP2HyXjE5",
+            "B8gJV1IhpuegLxdpXFOE",
+            "2zRM7PkgwBPiau2jvVXc",
+            "1SM7GgM6IMuvQlz2BwM3",
+            "5l5f8iK3YPeGga21rQIX",
+            "scOwDtmlUjD3prqpp97I",
+            "NOpBlnGInO9m6vDvFkFC",
+            "BZgkqPqms7Kj9ulSkVzn",
+            "wo6udizrrtpIxWGp2qJk",
+            "gU0LNdkMOQCOrPrwtbee",
+            "DGzg6RaUqxGRTHSBjfgF",
+            "x70vRnQBMBu4FAYhjJbO",
+            "Sm1seazb4gs7RSlUVw7c",
+            "P1bg08DkjqiVEzOn76yG",
+            "qDuRKMlYmrm8trt5QyBn",
+            "qXpMhyvQqiRxWQs4qSSB",
+            "TX3LPaxmHKxFdv7VOQHJ",
+            "N2lVS1w4EtoT3dr4eOWO",
+            "FGY2WhTYpPnrIDTdsKH5",
+            "kPzsL2i3teMYv0FxEYQ6",
+            "UgBBYS2sOqTuMpoF3BR0",
+            "hpp4J3VqNfWAUOO0d1Us",
+            "nPczCjzI2devNBz1zQrb",
+            "uYXf8XasLslADfZ2MB4u",
+            "gs0tAILXbY5DNrJrsM6F",
+            "DTKMou8ccj1ZaWGBiotd",
+            "vBKc2FfBKJfcZNyEt1n6",
+            "DYkrAHD8iwork3YSUBbs",
+            "56AoDkrOh6qfVPDXZ7Pt",
+            "eR40ATw9ArzDf9h3v7t7",
+            "g6xIsTj2HwM6VR4iXFCw",
+            "lcMyyd2HUfFzxdCaC4Ta",
+            "6aDn1KB0hjpdcocrUkmq",
+            "Sq93GQT4X1lKDXsQcixO",
+            "flHkNRp1BlvT73UL6gyz",
+            "9yzdeviXkFddZ4Oz8Mok",
+            "pPdl9cQBQq4p6mRkZy2Z",
+            "zYcjlYFOd3taleS0gkk3",
+            "nzeAacJi50IvxcyDnMXa",
+            "ruirxsoakN0GWmGNIo04",
+            "TC0Zp7WVFzhA8zpTlRqV",
+            "ljo9gAlSqKOvF6D8sOsX",
+            "PPzYpIqttlTYA83688JI",
+            "8JVbfL6oEdmuxKn5DK2C",
+            "iCrDUkL56s3C8sCRl7wb",
+            "wJqPPQ618aTW29mptyoc",
+            "EiNlNiXeDU1pqqOPrYMO",
+            "4YYIPFl9wE5c4L2eu2Gb",
+            "6F5Zhi321D3Oq7v1oNT4",
+            "YXpFCvM1S3JbWEJhoskW",
+            "LG95yZDEHg6fCZdQjLqj",
+            "CeNX9CMwmxDxUF5Q2Inm",
+            "aD6riP1btT197c6dACmy",
+            "mtrellq69YZsNwzUSyXh",
+            "dHd5gvgSOzSfduK4CvEg",
+            "eVItLK1UvXctxuaRV2Oq",
+            "esy0r39YPLQjOczyOib8",
+            "Tsns2HvNFKfGiNjllgqo",
+            "1U02n4nD6AdIZ9CjF053",
+            "AeRdCCKzvd23BpJoofzx",
+            "LruHrtVF6PSyGItzMNHS",
+            "1wGbFxmAM3Fgw63G1zZJ",
+            "hqfrgApggtO1785R4Fsn",
+            "MJ0RnG71ty4LH3dvNfSd"
+          ]
+        },
+        {
+          "meno": "timestamps",
+          "nadpis": "Časové značky",
+          "druh": "prepinac",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "predvolene": false
+        }
+      ]
+    },
+    {
+      "id": "lipsync",
+      "druh": "zvuk",
+      "rodina": "",
+      "nazov": "Lipsync · InfiniteTalk",
+      "popis": "Pery, ktoré sedia na zvuk. Z fotky alebo z videa, do 15 sekúnd.",
+      "poskytovatel": "kie",
+      "provider_model": "infinitetalk/lipsync",
+      "overit": true,
+      "jednotka": "seconds",
+      "jednotka_zaklad": 5,
+      "rezerva_jednotiek": 15,
+      "kredity": 16,
+      "usd": 0.075,
+      "cena_pole": "resolution",
+      "ceny_pola": {
+        "480p": 16,
+        "720p": 60
+      },
+      "cena_zaklad": "480p",
+      "poznamka_cena": "Dĺžku určuje nahraný zvuk, nevieme ju dopredu. Rezervujeme na 15 s; keď poskytovateľ nahlási skutočnú dĺžku, rozdiel vrátime.",
+      "nsfw": false,
+      "moderacia": "volna",
+      "stitky": [
+        "cena podľa voľby"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "image_url",
+        "audio_url",
+        "prompt"
+      ],
+      "polia": [
+        {
+          "meno": "prompt",
+          "nadpis": "Prompt",
+          "druh": "plocha",
+          "riadky": 4,
+          "skupina": "zaklad",
+          "povinne": true,
+          "napoveda": "Čo má na zábere byť. Konkrétne slová, nie zoznam.",
+          "max_znakov": 5000
+        },
+        {
+          "meno": "image_url",
+          "nadpis": "Obrázok",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "zaklad",
+          "povinne": true
+        },
+        {
+          "meno": "audio_url",
+          "nadpis": "Zvuk",
+          "druh": "subor",
+          "co": "zvuk",
+          "skupina": "zaklad",
+          "povinne": true
+        },
+        {
+          "meno": "resolution",
+          "nadpis": "Rozlíšenie",
+          "druh": "vyber",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "480p",
+            "720p"
+          ],
+          "predvolene": "480p",
+          "cena": true
+        },
+        {
+          "meno": "seed",
+          "nadpis": "Seed",
+          "druh": "seed",
+          "skupina": "pokrocile",
+          "povinne": false,
+          "napoveda": "Rovnaký seed + rovnaký prompt = rovnaký výsledok."
+        }
+      ]
+    },
+    {
+      "id": "kie-upscale",
+      "druh": "upscale",
+      "rodina": "",
+      "nazov": "Zväčšenie · Recraft",
+      "popis": "Zväčší a doostrí fotku. Najlacnejšie zväčšenie v ponuke.",
+      "poskytovatel": "kie",
+      "provider_model": "recraft/upscale",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 2,
+      "usd": 0.0025,
+      "nsfw": false,
+      "moderacia": "volna",
+      "stitky": [],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "image_url"
+      ],
+      "polia": [
+        {
+          "meno": "image_url",
+          "nadpis": "Obrázok",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "zaklad",
+          "povinne": true
+        }
+      ]
+    },
+    {
+      "id": "kie-topaz-image",
+      "druh": "upscale",
+      "rodina": "",
+      "nazov": "Topaz · fotka",
+      "popis": "Priemyselný štandard na zväčšovanie fotiek.",
+      "poskytovatel": "kie",
+      "provider_model": "topaz/image-upscale",
+      "overit": true,
+      "jednotka": "images",
+      "jednotka_zaklad": 1,
+      "kredity": 10,
+      "usd": 0.05,
+      "cena_pole": "upscale_factor",
+      "ceny_pola": {
+        "1": 10,
+        "2": 20,
+        "4": 40
+      },
+      "cena_zaklad": "2",
+      "poznamka_cena": "Cena rastie s násobkom zväčšenia (2K/4K/8K u poskytovateľa).",
+      "nsfw": false,
+      "moderacia": "volna",
+      "stitky": [
+        "4K",
+        "cena podľa voľby"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "image_url"
+      ],
+      "polia": [
+        {
+          "meno": "image_url",
+          "nadpis": "Obrázok",
+          "druh": "subor",
+          "co": "obrazok",
+          "skupina": "zaklad",
+          "povinne": true
+        },
+        {
+          "meno": "upscale_factor",
+          "nadpis": "Zväčšiť",
+          "druh": "vyber",
+          "jednotka": "x",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "1",
+            "2",
+            "4"
+          ],
+          "predvolene": "2",
+          "cena": true
+        }
+      ]
+    },
+    {
+      "id": "kie-topaz-video",
+      "druh": "upscale",
+      "rodina": "",
+      "nazov": "Topaz · video",
+      "popis": "Zväčšenie a vyčistenie videa. Ten istý Topaz, po sekundách.",
+      "poskytovatel": "kie",
+      "provider_model": "topaz/video-upscale",
+      "overit": true,
+      "jednotka": "seconds",
+      "jednotka_zaklad": 5,
+      "rezerva_jednotiek": 15,
+      "kredity": 40,
+      "usd": 0.2,
+      "cena_pole": "upscale_factor",
+      "ceny_pola": {
+        "2": 40,
+        "4": 70
+      },
+      "cena_zaklad": "2",
+      "poznamka_cena": "Dĺžku určuje nahrané video. Rezervujeme na 15 s; keď poskytovateľ nahlási skutočnú dĺžku, rozdiel vrátime.",
+      "nsfw": false,
+      "moderacia": "volna",
+      "stitky": [
+        "cena podľa voľby"
+      ],
+      "overene": "2026-08-31",
+      "dostupny": true,
+      "povinne": [
+        "video_url"
+      ],
+      "polia": [
+        {
+          "meno": "video_url",
+          "nadpis": "Video",
+          "druh": "subor",
+          "co": "video",
+          "skupina": "zaklad",
+          "povinne": true
+        },
+        {
+          "meno": "upscale_factor",
+          "nadpis": "Zväčšiť",
+          "druh": "vyber",
+          "jednotka": "x",
+          "skupina": "zaklad",
+          "povinne": false,
+          "moznosti": [
+            "2",
+            "4"
+          ],
+          "predvolene": "2",
+          "cena": true
+        }
+      ]
+    }
+  ]
+}

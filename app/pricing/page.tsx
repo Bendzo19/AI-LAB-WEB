@@ -1,5 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { balicky } from '@/lib/generation/balicky';
+import { MODELY } from '@/lib/generation/catalog';
+
+/**
+ * Cenník je statický, ale kreditové balíčky sa dajú meniť premennou
+ * CREDIT_PACKS. Aby zmena nečakala na ďalší deploy, stránka sa raz za
+ * hodinu pregeneruje. Účtuje sa vždy podľa servera (/api/credits/checkout),
+ * takže ani v tej hodine nemôže vzniknúť rozdiel medzi cenou a platbou.
+ */
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: 'Predplatné',
@@ -69,6 +79,67 @@ export default function PricingPage() {
         </p>
       </section>
 
+      {/* --------------------------------------------------- kredity --- */}
+      <section id="kredity" className="mt-14 scroll-mt-24">
+        <h2 className="text-xl font-semibold tracking-tight text-white">Kredity na generovanie</h2>
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/55">
+          Predplatné je prístup ku know-how. Samotné generovanie vo{' '}
+          <Link href="/studio" className="text-brand-400 underline-offset-4 hover:underline">
+            Štúdiu
+          </Link>{' '}
+          sa platí kreditmi — koľko spotrebuješ, toľko zaplatíš. Kredity neexpirujú
+          a generovať môžeš koľko vecí naraz chceš.
+        </p>
+
+        <ul className="mt-6 grid gap-4 sm:grid-cols-3">
+          {balicky().map((b) => (
+            <li
+              key={b.id}
+              className={`rounded-2xl border p-5 ${
+                b.najpredavanejsi
+                  ? 'border-brand-500/40 bg-brand-500/[0.06]'
+                  : 'border-white/10 bg-ink-800/40'
+              }`}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="font-medium text-white">{b.nazov}</h3>
+                {b.najpredavanejsi && (
+                  <span className="rounded-full bg-brand-500/20 px-2 py-0.5 text-[11px] text-brand-300">
+                    najčastejší
+                  </span>
+                )}
+              </div>
+
+              <p className="mt-3 text-2xl font-semibold tabular-nums text-white">
+                {(b.cena_centov / 100).toFixed(2).replace('.', ',')} €
+              </p>
+              <p className="mt-1 text-sm tabular-nums text-white/55">
+                {b.kredity.toLocaleString('sk-SK')} kreditov
+              </p>
+              {b.popis && <p className="mt-2 text-xs leading-relaxed text-white/40">{b.popis}</p>}
+
+              <Link
+                href={`/api/credits/checkout?balicek=${b.id}`}
+                prefetch={false}
+                className={`mt-5 block rounded-xl px-4 py-2.5 text-center text-sm font-medium transition ${
+                  b.najpredavanejsi
+                    ? 'bg-brand-500 text-white hover:bg-brand-600'
+                    : 'border border-white/12 text-white/85 hover:bg-white/5'
+                }`}
+              >
+                Kúpiť kredity
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <p className="mt-4 text-xs leading-relaxed text-white/35">
+          Orientačne: fotka od {najlacnejsiaFotka()} kreditov, päťsekundové video od{' '}
+          {najlacnejsieVideo()} kreditov. Presnú cenu vidíš pri každom modeli ešte pred
+          spustením a pri neúspešnom generovaní sa kredity vracajú v plnej výške.
+        </p>
+      </section>
+
       <section className="mt-14">
         <h2 className="text-xl font-semibold tracking-tight text-white">Časté otázky</h2>
         <dl className="mt-6 divide-y divide-white/8">
@@ -120,4 +191,19 @@ function Check() {
       />
     </svg>
   );
+}
+
+/* Ceny berieme z katalógu, nie z hlavy — inak sa text na cenníku rozíde
+   s tým, čo Štúdio naozaj účtuje. */
+function najlacnejsiaFotka(): number {
+  return najlacnejsi('foto');
+}
+
+function najlacnejsieVideo(): number {
+  return najlacnejsi('video');
+}
+
+function najlacnejsi(druh: string): number {
+  const ceny = MODELY.filter((m) => m.druh === druh && m.dostupny).map((m) => m.kredity);
+  return ceny.length ? Math.min(...ceny) : 0;
 }

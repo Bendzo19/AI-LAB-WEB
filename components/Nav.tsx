@@ -23,6 +23,12 @@ export function Nav() {
 
         <div className="flex items-center gap-1.5 sm:gap-4">
           <Link
+            href="/studio"
+            className="rounded-lg px-3 py-2 text-sm text-white/60 transition hover:text-white"
+          >
+            Štúdio
+          </Link>
+          <Link
             href="/pricing"
             className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition
                        hover:text-white sm:block"

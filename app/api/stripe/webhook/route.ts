@@ -20,12 +20,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { pool, syncDiscordRole } from '@/lib/db';
+import { pripis } from '@/lib/generation/credits';
 
 export const dynamic = 'force-dynamic';
 // Stripe needs the raw body for signature verification.
 export const runtime = 'nodejs';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+/**
+ * Klient sa vytvára až v požiadavke, nie pri načítaní modulu.
+ *
+ * Pri načítaní modulu ho vytvoriť nemožno: `next build` prechádza route-y
+ * a bez `STRIPE_SECRET_KEY` (CI, preview, klon bez .env) by celý build
+ * spadol na súbore, ktorý sa pri builde ani nemá volať.
+ */
+function stripeClient(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error('Missing STRIPE_SECRET_KEY');
+  return new Stripe(key);
+}
 
 /** Map a Stripe customer back to your website user. Adjust to your schema. */
 async function userIdForCustomer(customerId: string): Promise<string | null> {
@@ -66,6 +78,14 @@ export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
   if (!sig) return NextResponse.json({ error: 'no signature' }, { status: 400 });
 
+  let stripe: Stripe;
+  try {
+    stripe = stripeClient();
+  } catch {
+    console.error('[stripe/webhook] STRIPE_SECRET_KEY nie je nastavené');
+    return NextResponse.json({ error: 'stripe not configured' }, { status: 503 });
+  }
+
   const raw = await req.text();
 
   let event: Stripe.Event;
@@ -83,6 +103,37 @@ export async function POST(req: NextRequest) {
         // Put your website user id in metadata when creating the Checkout Session:
         //   metadata: { user_id: String(user.id) }
         const userId = session.metadata?.user_id ?? null;
+
+        /* Jednorazový nákup kreditov (mode: 'payment').
+         *
+         * Počet kreditov berieme z metadát session, ktoré sme SAMI zapísali
+         * pri jej vytváraní — nie z ničoho, čo pošle prehliadač. `ref` je id
+         * session, takže opakovaný webhook (Stripe ich posiela pri pochybnosti
+         * znova) kredity nepripíše druhýkrát. */
+        if (userId && session.mode === 'payment' && session.metadata?.kredity) {
+          if (session.payment_status !== 'paid') {
+            console.warn('[stripe/webhook] session bez zaplatenia, kredity nepripisujem', session.id);
+            break;
+          }
+          const kredity = Number(session.metadata.kredity);
+          if (!Number.isInteger(kredity) || kredity <= 0) {
+            console.error('[stripe/webhook] zlé metadata.kredity', session.metadata.kredity);
+            break;
+          }
+          const vysledok = await pripis(
+            userId,
+            kredity,
+            session.id,
+            'topup',
+            `nákup balíčka ${session.metadata.balicek ?? '?'}`,
+          );
+          console.log(
+            `[stripe/webhook] kredity ${vysledok.pripisane ? 'pripísané' : 'už boli pripísané'}: ` +
+              `+${kredity} pre užívateľa ${userId}, zostatok ${vysledok.zostatok}`,
+          );
+          break;
+        }
+
         if (!userId || !session.subscription) break;
 
         const subId =
