@@ -1,0 +1,27 @@
+{
+  "name": "@ns/agent-windows",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "sim": "tsx src/main.ts --simulate",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@ns/protocol": "*",
+    "@ns/brain": "*",
+    "ws": "^8.18.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.0",
+    "tsx": "^4.19.2",
+    "@types/ws": "^8.5.13",
+    "esbuild": "^0.25.0"
+  }
+}
