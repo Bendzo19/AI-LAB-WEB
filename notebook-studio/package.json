@@ -1,0 +1,18 @@
+{
+  "name": "notebook-studio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Diaľkové ovládanie vlastného notebooku z mobilu: agent pre Windows, relay, zobúdzač a mobilná PWA.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
