@@ -1,6 +1,6 @@
 /* Notebook Studio PWA — jednoduchý offline shell.
  * Cache-first pre appku, aby sa otvorila aj bez siete po prvom spustení. */
-const CACHE = 'ns-pwa-v2';
+const CACHE = 'ns-pwa-v3';
 const ASSETS = ['./', './index.html', './manifest.webmanifest',
   './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
 

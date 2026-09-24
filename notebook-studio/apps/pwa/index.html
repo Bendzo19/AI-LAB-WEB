@@ -581,6 +581,16 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .mech-svg .fa{stroke:var(--accent)}.mech-svg .fd{stroke:var(--data)}.mech-svg .fh{stroke:var(--heat)}.mech-svg .fp{stroke:var(--power)}.mech-svg .fg{stroke:var(--good)}.mech-svg .fi{stroke:var(--ink-3)}
 .mech-svg .ka{fill:var(--accent)}.mech-svg .kd{fill:var(--data)}.mech-svg .kh{fill:var(--heat)}.mech-svg .kp{fill:var(--power)}.mech-svg .kg{fill:var(--good)}.mech-svg .kl{fill:var(--line-strong)}.mech-svg .ki{fill:var(--ink)}
 .mech-svg .flowln{stroke-width:2.4;fill:none}
+.mech-big{margin:4px 0 0;font-size:13px;color:var(--ink-2);line-height:1.45}
+.mech-legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin:12px 2px 2px}
+.mech-legend span{display:inline-flex;align-items:center;gap:6px;font:500 11px var(--font-mono);color:var(--ink-2)}
+.mech-legend i{width:16px;height:5px;border-radius:3px;flex:none}
+.mech-legend .lg-a{background:var(--accent)}.mech-legend .lg-d{background:var(--data)}.mech-legend .lg-h{background:var(--heat)}.mech-legend .lg-p{background:var(--power)}.mech-legend .lg-g{background:var(--good)}
+.mech-stage{background:radial-gradient(140% 130% at 50% -10%,color-mix(in srgb,var(--accent) 7%,var(--surface-2)),var(--bg))}
+.mech-svg .chip.mpulse{filter:drop-shadow(0 0 3px color-mix(in srgb,var(--accent) 60%,transparent))}
+.mech-svg .glow{filter:drop-shadow(0 0 4px currentColor)}
+.mech-svg text.lbl{font-size:9.5px;fill:var(--ink-3)}
+@media (prefers-reduced-motion:reduce){.mech-svg .chip.mpulse{filter:none}}
 .diag-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .diag-cell{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);min-width:0}
 .dc-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:13px}
@@ -1512,97 +1522,139 @@ const MS = inner => '<svg class="mech-svg" viewBox="0 0 340 200" role="img" aria
 const FL = (d, color, extra='') => '<path d="'+d+'" class="flowln mflow '+color+' '+extra+'"/>';
 const dots = (arr, cls) => arr.map((p,i)=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+(p[2]||4)+'" class="'+cls+' d'+(i%8)+'"/>').join('');
 
+const LEG = (arr) => arr.map(l=>'<span><i class="lg-'+l[0]+'"></i>'+esc(l[1])+'</span>').join('');
 const MECH = {
-  display: () => MS(
+  display: { big: 'Biele podsvietenie svieti stále — každý z 2 miliónov pixelov len reguluje, koľko svetla a akej farby prepustí.', legend:[['a','svetlo'],['d','obraz z GPU']], s: () => MS(
+    FL('M8 20 C 30 20 30 40 40 182','fd d0')+T(6,16,'obraz z GPU','b')+
     R(28,180,284,12,'bx2')+
     [60,110,160,210,260].map((x,i)=>'<circle cx="'+x+'" cy="186" r="4" class="kp mpulse d'+i+'"/>').join('')+
-    [70,120,170,220,270].map((x,i)=>FL('M'+x+' 180 L'+x+' 48','fa','slow d'+i)).join('')+
+    [70,120,170,220,270].map((x,i)=>FL('M'+x+' 178 L'+x+' 96','fa slow d'+i)).join('')+
     R(24,128,292,9,'bx2')+T(24,150,'polarizátor + TFT')+
     [50,90,130,170,210,250,290].map((x,i)=>'<rect x="'+(x-3)+'" y="104" width="6" height="18" rx="2" class="ka mtwist d'+(i%6)+'" style="transform-origin:'+x+'px 113px"/>').join('')+
-    T(300,118,'kryštály')+
-    [60,100,140,180,220,260].map((x,i)=>'<rect x="'+(x-7)+'" y="74" width="14" height="12" rx="2" fill="'+['#E5484D','#30A46C','#3E63DD'][i%3]+'" opacity="0.9"/>').join('')+
-    T(60,68,'farebný filter R G B')+
-    '<rect x="150" y="26" width="40" height="20" rx="3" fill="#E5484D" class="mpulse d0"/><rect x="150" y="26" width="40" height="20" rx="3" fill="#3E63DD" class="mpulse d3" opacity="0.6"/>'+
-    T(196,42,'pixel','b'),
-    'Podsvietenie → kryštály → filter → pixel'),
+    T(300,118,'kryštály sa natáčajú')+
+    [60,100,140,180,220,260].map((x,i)=>'<rect x="'+(x-7)+'" y="74" width="14" height="12" rx="2" fill="'+['#E5484D','#30A46C','#3E63DD'][i%3]+'" opacity="0.92"/>').join('')+
+    T(52,68,'farebný filter R G B')+
+    '<rect x="150" y="26" width="42" height="20" rx="3" fill="#E5484D" class="mpulse d0 glow"/><rect x="150" y="26" width="42" height="20" rx="3" fill="#3E63DD" class="mpulse d3" opacity="0.6"/>'+
+    T(198,42,'hotový pixel','b') ) },
 
-  cpu: () => { let g='';
-    const st=[['RAM',18,86],['L3 cache',96,86],['dekóder',176,86],['jadrá',256,86]];
-    st.forEach((b,i)=>{ g+=R(b[1],b[2],66,40,i===3?'chip':'bx')+T(b[1]+8,b[2]+24,b[0],'b'); });
-    g+=FL('M84 106 L96 106','fd')+FL('M162 106 L176 106','fd')+FL('M242 106 L256 106','fd d2');
-    g+=FL('M289 86 C 300 40 60 40 51 84','fd slow d4');
-    g+='<rect x="256" y="86" width="66" height="40" rx="4" class="chip mpulse d1"/>'+T(264,110,'ALU ×','b');
-    g+=T(18,150,'načítať → dekódovať → vykonať → zapísať');
-    return MS(g); },
+  cpu: { big: 'Procesor v cykle číta inštrukcie, rozloží ich na drobné operácie a mnohé vykoná naraz — tisíckrát za sekundu mení takt podľa záťaže.', legend:[['d','inštrukcie a dáta']], s: () => { let g='';
+    const st=[['RAM',16,84],['L3 cache',94,84],['dekodér',174,84],['jadrá',254,84]];
+    st.forEach((b,i)=>{ g+=R(b[1],b[2],68,42,i===3?'chip':'bx')+T(b[1]+8,b[2]+25,b[0],'b'); });
+    g+='<rect x="254" y="84" width="68" height="42" rx="4" class="chip mpulse d1 glow"/>'+T(262,109,'ALU · FPU','b');
+    g+=FL('M84 105 L94 105','fd d0')+FL('M162 105 L174 105','fd d1')+FL('M242 105 L254 105','fd d2');
+    g+=FL('M288 84 C 300 34 60 34 50 82','fd slow d4')+T(120,28,'výsledok sa zapíše späť');
+    g+=T(16,150,'načítať → dekódovať → vykonať → zapísať');
+    return MS(g); } },
 
-  gpu: () => { let g=R(150,30,150,96,'bx',6);
-    for(let r=0;r<4;r++)for(let c=0;c<8;c++) g+='<rect x="'+(158+c*17)+'" y="'+(38+r*22)+'" width="13" height="16" rx="2" class="chip mpulse d'+((r*8+c)%8)+'"/>';
-    g+='<path d="M40 60 L90 40 L90 96 Z" class="ka mpulse d0"/>'+T(36,116,'trojuholník')+
-    FL('M92 68 L150 74','fd')+
-    FL('M300 78 C 320 78 320 150 40 150','fa slow d4')+T(60,166,'hotová snímka → displej');
-    return MS(g); },
+  gpu: { big: 'Grafika má tisíce malých jadier, čo počítajú farbu všetkých pixelov naraz — preto zvládne plynulý obraz aj hru.', legend:[['a','geometria'],['d','hotová snímka']], s: () => { let g=R(146,28,168,104,'bx',6);
+    for(let r=0;r<4;r++)for(let c=0;c<8;c++) g+='<rect x="'+(154+c*19)+'" y="'+(36+r*24)+'" width="14" height="18" rx="2" class="chip mpulse d'+((r*8+c)%8)+'"/>';
+    g+=T(150,148,'tisíce jadier počítajú naraz');
+    g+='<path d="M36 62 L92 40 L92 100 Z" class="ka mpulse d0 glow"/>'+T(30,116,'3D scéna')+
+    FL('M94 70 L146 78','fa d1')+
+    FL('M314 80 C 336 80 336 168 40 168','fd slow d4')+T(56,182,'snímka → displej / HDMI');
+    return MS(g); } },
 
-  ram: () => { let g='';
-    for(let r=0;r<6;r++)for(let c=0;c<10;c++){ const on=(r===2)||(c===6); g+='<rect x="'+(30+c*20)+'" y="'+(24+r*18)+'" width="15" height="13" rx="2" class="'+(on?'ka mpulse d'+((r+c)%6):'bx2')+'"/>'; }
-    g+=FL('M20 60 L30 60','fa')+T(6,64,'riadok','b');
-    g+=FL('M150 16 L150 24','fa d2')+T(120,12,'stĺpec','b');
-    g+=FL('M230 60 C 300 60 300 160 40 168','fd slow d4')+T(50,182,'dáta von · obnova každých 32 ms');
-    return MS(g); },
+  ram: { big: 'Pamäť je mriežka buniek. Procesor povie adresu (riadok a stĺpec) a pamäť mu obratom vráti dáta — musí sa však stále obnovovať.', legend:[['a','adresa'],['d','dáta']], s: () => { let g='';
+    for(let r=0;r<6;r++)for(let c=0;c<10;c++){ const on=(r===2)||(c===6); g+='<rect x="'+(34+c*19)+'" y="'+(30+r*17)+'" width="14" height="12" rx="2" class="'+(on?'ka mpulse d'+((r+c)%6):'bx2')+'"/>'; }
+    g+=FL('M20 64 L34 64','fa d0')+T(6,58,'riadok','b');
+    g+=FL('M148 18 L148 30','fa d2')+T(120,14,'stĺpec','b');
+    g+=FL('M234 64 C 306 64 306 168 40 172','fd slow d4')+T(48,186,'dáta von · bunky sa obnovujú každých 32 ms');
+    return MS(g); } },
 
-  ssd: () => { let g=R(20,74,70,52,'bx',5)+T(30,104,'radič','b');
-    for(let r=0;r<4;r++)for(let c=0;c<6;c++) g+='<rect x="'+(150+c*28)+'" y="'+(30+r*30)+'" width="22" height="22" rx="3" class="chip mpulse d'+((r*6+c)%8)+'"/>';
-    g+=T(150,164,'NAND bunky (náboj = bit)');
-    g+=FL('M92 100 L150 60','fd')+FL('M150 130 C 120 150 100 120 92 108','fd d3');
-    g+=T(20,150,'radič ↔ bunky · dáta cez PCIe');
-    return MS(g); },
+  ssd: { big: 'Disk ukladá bity ako elektrický náboj v miliardách buniek — bez pohyblivých častí, preto je rýchly a tichý.', legend:[['d','dáta cez PCIe']], s: () => { let g=R(18,72,72,54,'bx',5)+T(28,103,'radič','b');
+    for(let r=0;r<4;r++)for(let c=0;c<6;c++) g+='<rect x="'+(150+c*28)+'" y="'+(28+r*30)+'" width="22" height="22" rx="3" class="chip mpulse d'+((r*6+c)%8)+'"/>';
+    g+=T(150,162,'NAND bunky — náboj = bit');
+    g+=FL('M92 96 L150 56','fd d0')+FL('M150 132 C 118 152 100 118 92 106','fd d3');
+    g+=T(18,150,'radič ↔ bunky, dáta cez PCIe');
+    return MS(g); } },
 
-  battery: () => { let g=R(40,60,50,80,'bx',6)+T(50,104,'−','b')+R(250,60,50,80,'bx',6)+T(262,104,'+','b');
-    g+=R(90,90,160,20,'bx2')+T(120,104,'elektrolyt + membrána');
-    g+=dots([[110,100],[140,100],[170,100],[200,100],[230,100]],'kp mpulse');
-    g+=FL('M92 74 C 170 30 170 30 248 74','fp slow d2')+T(150,42,'ióny Li⁺','b');
-    g+=FL('M300 100 C 330 100 330 170 40 100','fp slow d4')+T(150,186,'prúd do notebooku (vybíjanie)');
-    return MS(g); },
+  battery: { big: 'Nabitie sú lítiové ióny nahromadené na jednej strane. Pri používaní putujú na druhú a poháňajú notebook; nabíjačka ich tlačí späť.', legend:[['p','ióny a prúd']], s: () => { let g=R(38,58,52,82,'bx',6)+T(48,104,'−','b')+R(250,58,52,82,'bx',6)+T(262,104,'+','b');
+    g+=R(90,88,160,22,'bx2')+T(116,103,'elektrolyt + membrána');
+    g+=dots([[112,99],[140,99],[168,99],[196,99],[224,99]],'kp mpulse');
+    g+=FL('M92 72 C 170 26 170 26 248 72','fp slow d2')+T(150,40,'ióny Li⁺ →','b');
+    g+=FL('M302 100 C 334 100 334 176 40 100','fp slow d4')+T(120,190,'prúd poháňa notebook (vybíjanie)');
+    return MS(g); } },
 
-  heatpipe: () => { let g=R(120,150,100,34,'bx',5)+T(142,171,'CPU / GPU','b')+'<rect x="120" y="150" width="100" height="34" rx="5" class="kh mpulse d0" opacity="0.5"/>';
+  heatpipe: { big: 'Teplo z čipov pohltí kvapalina v teplovode, odvedie ho na tenké rebrá a ventilátor ho vyfúkne von zo skrine.', legend:[['h','teplo'],['d','vzduch']], s: () => { let g=R(120,150,100,34,'bx',5)+'<rect x="120" y="150" width="100" height="34" rx="5" class="kh mpulse d0" opacity="0.5"/>'+T(140,171,'CPU / GPU','b');
     g+=dots([[140,148],[160,146],[180,148],[200,146]],'kh mrise');
-    g+=R(160,60,20,90,'bx2')+T(150,52,'teplovod')+
-    FL('M170 150 L170 62','fh slow d1');
-    for(let i=0;i<7;i++) g+=R(210+i*14,50,8,60,'bx2');
-    g+=T(214,128,'rebrá (heatsink)');
-    g+=FL('M300 80 C 330 80 330 40 214 60','fd d3')+
-    // fan
-    '<g class="mspin" style="transform-origin:70px 90px"><circle cx="70" cy="90" r="30" class="bx"/>'+
-    [0,72,144,216,288].map(a=>'<path d="M70 90 L'+(70+26*Math.cos(a*Math.PI/180))+' '+(90+26*Math.sin(a*Math.PI/180))+' '+(70+18*Math.cos((a+40)*Math.PI/180))+' '+(90+18*Math.sin((a+40)*Math.PI/180))+' Z" class="chip"/>').join('')+'<circle cx="70" cy="90" r="7" class="ka"/></g>'+
-    T(46,140,'ventilátor')+FL('M40 90 L10 90','fd')+T(2,84,'von');
-    return MS(g); },
+    g+=R(160,58,20,92,'bx2')+T(150,50,'teplovod')+FL('M170 150 L170 62','fh slow d1');
+    for(let i=0;i<7;i++) g+=R(210+i*14,48,8,62,'bx2');
+    g+=T(214,126,'rebrá (heatsink)')+FL('M300 78 C 332 78 332 38 214 58','fd d3');
+    g+='<g class="mspin" style="transform-origin:70px 88px"><circle cx="70" cy="88" r="30" class="bx"/>'+
+      [0,72,144,216,288].map(a=>'<path d="M70 88 L'+(70+26*Math.cos(a*Math.PI/180)).toFixed(1)+' '+(88+26*Math.sin(a*Math.PI/180)).toFixed(1)+' '+(70+18*Math.cos((a+40)*Math.PI/180)).toFixed(1)+' '+(88+18*Math.sin((a+40)*Math.PI/180)).toFixed(1)+' Z" class="chip"/>').join('')+'<circle cx="70" cy="88" r="7" class="ka"/></g>'+
+      T(46,140,'ventilátor')+FL('M40 88 L8 88','fd d0')+T(4,80,'von');
+    return MS(g); } },
 
-  fan: () => MECH.heatpipe(),
+  wifi: { big: 'Modul premení dáta na vysokofrekvenčný signál, anténa ho vyžiari ako rádiovú vlnu; dve antény zvládnu dva toky naraz.', legend:[['d','dáta v kábli'],['a','rádiová vlna']], s: () => { let g=R(28,78,62,42,'bx',5)+T(38,103,'Wi-Fi','b');
+    g+=FL('M92 99 L150 99','fd d0')+T(96,92,'koax');
+    g+='<rect x="152" y="66" width="8" height="64" rx="3" class="ka glow"/>'+T(138,150,'anténa');
+    g+=[26,54,82].map((r,i)=>'<circle cx="156" cy="99" r="'+r+'" class="mwave fa d'+(i*2)+'" stroke-width="2"><animate attributeName="r" values="8;'+(r+42)+'" dur="2.6s" begin="'+(i*0.85)+'s" repeatCount="indefinite"/></circle>').join('');
+    g+=T(232,150,'rádiové vlny (2 antény = MIMO)');
+    return MS(g); } },
 
-  wifi: () => { let g=R(30,80,60,40,'bx',5)+T(40,104,'Wi-Fi','b');
-    g+=FL('M92 100 L150 100','fd')+T(96,92,'koax');
-    g+='<rect x="152" y="70" width="8" height="60" rx="3" class="ka"/>'+T(140,150,'anténa');
-    g+=[30,60,90].map((r,i)=>'<circle cx="156" cy="100" r="'+r+'" class="mwave fa d'+(i*2)+'" stroke-width="2"><animate attributeName="r" values="8;'+ (r+40) +'" dur="2.6s" begin="'+(i*0.85)+'s" repeatCount="indefinite"/></circle>').join('');
-    g+=T(230,150,'rádiové vlny');
-    return MS(g); },
-
-  vrm: () => { let g=R(20,80,58,40,'bx',5)+T(28,104,'20 V','b');
-    g+=FL('M80 100 L120 100','fp')+
-    '<rect x="120" y="82" width="30" height="36" rx="4" class="chip mpulse d0"/>'+T(120,134,'MOSFET spína')+
+  vrm: { big: 'Batéria dáva vysoké napätie, ale čipy potrebujú nízke a stabilné. VRM ho rýchlym spínaním „poseká" a cievka s kondenzátorom vyhladí.', legend:[['p','napájanie']], s: () => { let g=R(18,80,58,40,'bx',5)+T(26,104,'20 V','b');
+    g+=FL('M78 100 L118 100','fp d0')+
+    '<rect x="120" y="82" width="30" height="36" rx="4" class="chip mpulse d0 glow"/>'+T(116,134,'MOSFET spína')+
     '<path d="M158 100 q 8 -14 16 0 q 8 -14 16 0 q 8 -14 16 0" class="fp flowln"/>'+T(158,84,'cievka')+
     FL('M210 100 L250 100','fp slow d2')+
-    R(250,80,66,40,'chip')+T(258,104,'1,1 V CPU','b')+
-    T(20,164,'vysoké napätie → rýchle spínanie → hladké nízke');
-    return MS(g); },
-  board: () => MECH.vrm(),
+    R(250,80,66,40,'chip')+T(258,104,'1,1 V','b')+
+    T(18,166,'vysoké napätie → rýchle spínanie → hladké nízke');
+    return MS(g); } },
+
+  keyboard: { big: 'Klávesa stlačí gumovú kupolu, tá spojí dve fólie v presnom bode mriežky. Čip EC mriežku stále skenuje a pošle kód klávesy procesoru.', legend:[['d','signál klávesy']], s: () => { let g=R(120,20,100,24,'bx',6)+T(148,36,'klávesa','b');
+    g+='<path d="M150 46 Q170 14 190 46" class="fa flowln"/>'+T(196,34,'nožnice');
+    g+='<path d="M148 92 Q170 58 192 92 Z" class="bx2"/>'+T(198,80,'gumová kupola');
+    g+=R(70,96,200,6,'bx2')+R(70,104,200,6,'bx')+R(70,112,200,6,'bx2')+T(70,134,'membrána: horná · medzera · spodná');
+    g+='<circle cx="170" cy="107" r="4" class="kd glow mpulse d0"/>'+FL('M170 150 L170 120','fd d1')+T(178,158,'kontakt → EC → procesor');
+    return MS(g); } },
+
+  trackpad: { big: 'Prst mení elektrickú kapacitu na priesečníkoch jemnej mriežky pod povrchom. Radič z najväčších zmien vypočíta presnú polohu.', legend:[['d','meranie polohy']], s: () => { let g='';
+    for(let i=0;i<8;i++) g+=L(40,26+i*17,300,26+i*17,'l');
+    for(let i=0;i<14;i++) g+=L(52+i*18,18,52+i*18,160,'l2');
+    g+='<circle cx="176" cy="90" r="26" class="da mpulse d0"/><circle cx="176" cy="90" r="7" class="kd glow"/>';
+    g+=T(40,182,'riadky × stĺpce · prst mení kapacitu → radič → poloha');
+    return MS(g); } },
+
+  boot: { big: 'Po stlačení tlačidla EC zapne napájanie, firmvér (UEFI) overí hardvér a načíta systém z disku až po plochu.', legend:[['p','napájanie'],['d','načítanie systému']], s: () => { const st=[['tlačidlo',12],['EC',78],['UEFI',146],['SSD',214],['plocha',282]];
+    let g=st.map((b,i)=>R(b[1],86,58,40,i===4?'chip':'bx')+T(b[1]+8,110,b[0],'b')).join('');
+    for(let i=0;i<4;i++) g+=FL('M'+(st[i][1]+58)+' 106 L'+(st[i+1][1])+' 106',(i<1?'fp':'fd')+' d'+i);
+    g+=T(12,150,'stlač → napájanie → kontrola → načítanie → beží');
+    return MS(g); } },
+
+  ports: { big: 'USB-C je jeden konektor pre tri veci naraz: dáta, obraz (DisplayPort) aj nabíjanie (Power Delivery) v tom istom kábli.', legend:[['d','dáta'],['a','obraz'],['p','napájanie']], s: () => { let g=R(150,80,60,40,'bx',8)+T(158,104,'USB-C','b');
+    g+=FL('M20 60 C 90 60 120 90 150 92','fd d0')+T(16,54,'dáta','b');
+    g+=FL('M20 100 L150 100','fa d2')+T(16,96,'obraz','b');
+    g+=FL('M20 140 C 90 140 120 110 150 108','fp d4')+T(16,152,'napájanie','b');
+    g+=FL('M210 100 L320 100','fd slow d1')+T(240,92,'monitor / disk / nabíjačka');
+    return MS(g); } },
+
+  cables: { big: 'Tenké ohybné káble (obraz eDP, anténa) vedú cez pánt do veka a musia vydržať tisíce otvorení bez zlomenia.', legend:[['d','obraz'],['a','anténa']], s: () => { let g=R(40,150,90,34,'bx',5)+T(52,171,'základ. doska','b')+R(230,20,90,34,'bx',5)+T(244,41,'veko','b');
+    g+='<circle cx="180" cy="120" r="10" class="bx2"/>'+T(168,148,'pánt');
+    g+=FL('M130 160 C 180 150 160 120 180 118 C 200 116 210 70 232 46','fd slow d0');
+    g+=FL('M130 172 C 190 168 168 128 184 124 C 210 118 214 78 232 52','fa slow d3');
+    g+=T(40,196,'kábel sa v pánte pri otváraní mierne stočí');
+    return MS(g); } },
+
+  charger: { big: 'Adaptér premení striedavé napätie zo zásuvky na jednosmerných 20 V, ktoré notebook rozvedie do batérie a čipov.', legend:[['p','striedavé → jednosmerné']], s: () => { let g=R(14,80,40,40,'bx',4)+T(18,104,'~230','b')+T(18,74,'zásuvka');
+    g+='<path d="M60 100 q 6 -16 12 0 q 6 16 12 0 q 6 -16 12 0" class="fp flowln"/>'+
+    R(120,74,80,52,'bx',6)+T(128,104,'adaptér','b')+
+    FL('M200 100 L266 100','fp slow d2')+
+    R(266,80,60,40,'chip')+T(274,104,'20 V =','b')+
+    T(14,150,'striedavé → usmernenie → jednosmerných 20 V');
+    return MS(g); } },
 };
+MECH.fan = MECH.heatpipe; MECH.board = MECH.vrm;
 
 function openMech(id){
-  const p = INFO[id]; const key = (p && (MECH[p.dia] ? p.dia : (MECH[id] ? id : null))); if (!key) return;
-  const scene = MECH[key]; const steps = (p.how && p.how.length ? p.how : ['Vizualizácia mechanizmu.']);
+  const p = INFO[id]; if (!p) return;
+  const key = (MECH[p.dia] ? p.dia : (MECH[id] ? id : null)); if (!key) return;
+  const m = MECH[key]; const steps = (p.how && p.how.length ? p.how : ['Vizualizácia mechanizmu.']);
   const root = $('#modalRoot'), prevEl = document.activeElement;
   root.innerHTML = '<div class="modal mech-modal" role="dialog" aria-modal="true" aria-labelledby="mkT"><div class="box">'+
     '<div class="mech-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg><h4 id="mkT">Ako funguje: '+esc(p.name)+'</h4></div>'+
-    '<div class="mech-stage">'+scene()+'</div>'+
+    (m.big ? '<p class="mech-big">'+esc(m.big)+'</p>' : '')+
+    '<div class="mech-stage">'+m.s()+'</div>'+
+    (m.legend ? '<div class="mech-legend">'+LEG(m.legend)+'</div>' : '')+
     '<div class="mech-steps">'+steps.map(()=>'<i></i>').join('')+'</div>'+
     '<p class="mech-cap"></p>'+
     '<div class="mech-ctrl"><button class="btn" type="button" data-mprev aria-label="Späť">‹</button><button class="btn" type="button" data-mplay>Pauza</button><button class="btn" type="button" data-mnext aria-label="Ďalej">›</button><button class="btn btn-primary" type="button" data-mclose style="margin-left:auto">Zavrieť</button></div>'+
@@ -1610,9 +1662,9 @@ function openMech(id){
   const box = root.firstChild; let idx=0, playing=!reduceMotion, timer=null;
   const ds = box.querySelectorAll('.mech-steps i'), cap = box.querySelector('.mech-cap');
   const show = i => { idx=(i+steps.length)%steps.length; ds.forEach((d,k)=>d.classList.toggle('on',k<=idx)); cap.innerHTML='<b>'+(idx+1)+'.</b>'+esc(steps[idx]); };
-  const play = on => { playing=on; const pb=box.querySelector('[data-mplay]'); if(pb) pb.textContent=on?'Pauza':'Prehrať'; if(timer)clearInterval(timer); timer=null; if(on) timer=setInterval(()=>show(idx+1),2800); };
-  const close = () => { if(timer)clearInterval(timer); root.innerHTML=''; if(prevEl&&prevEl.focus)prevEl.focus(); };
+  const play = on => { playing=on; const pb=box.querySelector('[data-mplay]'); if(pb) pb.textContent=on?'Pauza':'Prehrať'; if(timer)clearInterval(timer); timer=null; if(on) timer=setInterval(()=>show(idx+1),2900); };
   show(0); play(playing);
+  const close = () => { if(timer)clearInterval(timer); root.innerHTML=''; if(prevEl&&prevEl.focus)prevEl.focus(); };
   box.addEventListener('click', e => {
     if(e.target===box || e.target.closest('[data-mclose]')) return close();
     if(e.target.closest('[data-mnext]')){ play(false); show(idx+1); }
