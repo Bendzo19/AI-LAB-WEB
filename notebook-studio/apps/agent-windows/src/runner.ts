@@ -69,6 +69,7 @@ function confirmText(name: CommandName, args: Record<string, unknown>): { title:
     'process.kill': `Ukončí sa proces ${args.pid}. Neuložená práca v ňom sa stratí.`,
     'terminal.run': `Spustí sa príkaz: ${String(args.command).slice(0, 120)}`,
     'files.read': `Prečíta sa súbor: ${args.path}`,
+    'fan.set_boost': args.enabled ? 'Ventilátory pôjdu naplno — hlučnejšie, ale chladnejšie. Vypneš to rovnakým prepínačom.' : 'Ventilátory sa vrátia do automatického režimu.',
   };
   return { title: def.title + '?', text: extra[name] ?? def.description };
 }

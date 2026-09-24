@@ -75,6 +75,7 @@ export const COMMANDS = {
   'perf.get': def({ name: 'perf.get', title: 'Režim výkonu', risk: 'safe', requires: ['lenovo'], args: none, description: 'Aktuálny režim výkonu Lenovo (tichý, vyvážený, výkonný).' }),
   'perf.set_mode': def({ name: 'perf.set_mode', title: 'Nastaviť režim výkonu', risk: 'safe', requires: ['lenovo'], args: z.object({ mode: z.enum(['quiet', 'balanced', 'performance']) }).strict(), description: 'Prepne režim výkonu ako Fn+Q.' }),
   'battery.set_conservation': def({ name: 'battery.set_conservation', title: 'Šetrenie batérie', risk: 'confirm', requires: ['lenovo'], args: z.object({ enabled: z.boolean() }).strict(), description: 'Obmedzí nabíjanie batérie približne na 80 % a predĺži jej životnosť.' }),
+  'fan.set_boost': def({ name: 'fan.set_boost', title: 'Ventilátory naplno', risk: 'confirm', requires: ['lenovo'], args: z.object({ enabled: z.boolean() }).strict(), description: 'Zapne alebo vypne maximálne otáčky ventilátorov (Lenovo fan boost). Overená funkcia Lenovo — hlučnejšie, ale chladnejšie. Nemení krivku natvrdo.' }),
   'keyboard.set_backlight': def({ name: 'keyboard.set_backlight', title: 'Podsvietenie klávesnice', risk: 'safe', requires: ['lenovo'], args: z.object({ level: z.enum(['off', 'low', 'high']) }).strict(), description: 'Nastaví jas podsvietenia klávesnice.' }),
 
   'audio.set_volume': def({ name: 'audio.set_volume', title: 'Hlasitosť', risk: 'safe', args: z.object({ percent: pct }).strict(), description: 'Nastaví hlasitosť systému v percentách.' }),

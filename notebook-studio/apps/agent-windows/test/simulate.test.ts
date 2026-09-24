@@ -61,3 +61,14 @@ describe('SimulateBackend — správa o zdraví', () => {
     expect(Array.isArray(r.findings)).toBe(true);
   });
 })
+
+describe('SimulateBackend — chladenie', () => {
+  it('fan.set_boost zapne maximálne otáčky a prejaví sa v senzoroch', async () => {
+    const b = new SimulateBackend();
+    const r = await b.run('fan.set_boost', { enabled: true }, ctx()) as { boost: boolean };
+    expect(r.boost).toBe(true);
+    const sens = await b.run('diag.sensors', {}, ctx()) as { fans: { fullSpeed: boolean; rpm: number[] } };
+    expect(sens.fans.fullSpeed).toBe(true);
+    expect(sens.fans.rpm[0]).toBeGreaterThan(4200);
+  });
+})

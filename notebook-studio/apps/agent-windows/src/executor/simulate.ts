@@ -15,6 +15,7 @@ export class SimulateBackend implements Backend {
   private t0 = Date.now();
   private mode: 'quiet' | 'balanced' | 'performance' = 'balanced';
   private load = false;
+  private boost = false;
   private brightness = 70;
   private volume = 45;
   private running = new Set(['Chrome', 'Code', 'Discord', 'Steam', 'Spotify']);
@@ -59,6 +60,7 @@ export class SimulateBackend implements Backend {
       case 'perf.set_mode': this.mode = a.mode as typeof this.mode; return { mode: this.mode };
       case 'battery.set_conservation': return { conservation: a.enabled };
       case 'keyboard.set_backlight': return { level: a.level };
+      case 'fan.set_boost': { this.boost = !!a.enabled; return { boost: this.boost }; }
       case 'audio.set_volume': this.volume = a.percent as number; return { percent: this.volume };
       case 'audio.mute': return { muted: a.muted };
       case 'display.set_brightness': this.brightness = a.percent as number; return { percent: this.brightness };
@@ -67,7 +69,7 @@ export class SimulateBackend implements Backend {
       case 'network.wol_status': return { supported: false, adapters: [{ name: 'Ethernet', wakeArmed: false }], reason: 'Rýchle spustenie Windows je zapnuté a v BIOS-e chýba voľba pre Wake-on-LAN. Zo spánku funguje spoľahlivejšie než z úplného vypnutia.' };
       case 'network.wol_enable': return { adapter: a.adapter, armed: true, fastStartupDisabled: true };
       case 'bios.info': return { version: 'M4CN35WW', date: '2024-03-12', uefi: true, secureBoot: true, tpm: '2.0', lenovoSettings: { wakeOnLan: 'unavailable', fnLock: true } };
-      case 'diag.sensors': { const t=this.temp(); const base=this.load?38:5; const cores=Array.from({length:14},(_,i)=>({ core:i, loadPct: Math.max(0,Math.min(100, Math.round(base + Math.sin((Date.now()/700)+i)*base + (this.load&&i<6?40:0)))) })); return { cpu:{ name:'Intel Core i7-13650HX', clockMhz:this.load?4600:1300, maxClockMhz:4900, coreCount:14, threads:20, loadPct:Math.round(cores.reduce((a,c)=>a+c.loadPct,0)/cores.length), cores }, memory:{ freeGb:+(16-(this.load?13.1:9.8)).toFixed(1), totalGb:16 }, fans:{ rpm:[this.load?4200:0,this.load?4000:0], fullSpeed:false }, temps:[{ zone:'CPU', tempC:t },{ zone:'GPU', tempC:t-6 }], gpu:{ name:'NVIDIA GeForce RTX 4060 Laptop', driver:'552.44', utilizationPct:this.load?96:2, vramUsedMb:this.load?7100:900, vramTotalMb:8188, tempC:t-6, powerW:this.load?115:8, clockCoreMhz:this.load?2100:210, clockMemMhz:8000 } }; }
+      case 'diag.sensors': { const t=this.temp(); const base=this.load?38:5; const cores=Array.from({length:14},(_,i)=>({ core:i, loadPct: Math.max(0,Math.min(100, Math.round(base + Math.sin((Date.now()/700)+i)*base + (this.load&&i<6?40:0)))) })); return { cpu:{ name:'Intel Core i7-13650HX', clockMhz:this.load?4600:1300, maxClockMhz:4900, coreCount:14, threads:20, loadPct:Math.round(cores.reduce((a,c)=>a+c.loadPct,0)/cores.length), cores }, memory:{ freeGb:+(16-(this.load?13.1:9.8)).toFixed(1), totalGb:16 }, fans:{ rpm:[this.boost?5200:(this.load?4200:0),this.boost?5000:(this.load?4000:0)], fullSpeed:this.boost }, temps:[{ zone:'CPU', tempC:t },{ zone:'GPU', tempC:t-6 }], gpu:{ name:'NVIDIA GeForce RTX 4060 Laptop', driver:'552.44', utilizationPct:this.load?96:2, vramUsedMb:this.load?7100:900, vramTotalMb:8188, tempC:t-6, powerW:this.load?115:8, clockCoreMhz:this.load?2100:210, clockMemMhz:8000 } }; }
       case 'diag.gpu': { const t=this.temp()-6; return { source:'nvidia-smi', name:'NVIDIA GeForce RTX 4060 Laptop', driver:'552.44', utilizationPct:this.load?96:2, vramUsedMb:this.load?7100:900, vramTotalMb:8188, tempC:t, powerW:this.load?115:8, clockCoreMhz:this.load?2100:210, clockMemMhz:8000, note:'Simulované hodnoty.' }; }
       case 'diag.disks': return { disks:[{ name:'0', model:'SK hynix BC901 512GB', type:'SSD', sizeGb:512, health:'Healthy', tempC:41, wearPct:2, readErrors:0, powerOnHours:1180 }], volumes:[{ letter:'C', label:'Windows', usedGb:318, totalGb:476 }] };
       case 'diag.network': return { adapters:[{ name:'Wi-Fi', linkMbps:1200, mac:'8c-16-45-aa-bb-cc' }], wifi:'SSID: Domov-5G\nSignal: 92%', latencyToGatewayMs:3 };

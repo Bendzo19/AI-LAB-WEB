@@ -95,6 +95,7 @@ export class WindowsBackend implements Backend {
       case 'perf.get': { this.requireLenovo(); const v = await this.ps(`(${this.lenovoMethod('GetSmartFanMode')}).Data`, ctx).catch(() => ''); return { mode: mapLenovoMode(v.trim()) }; }
       case 'perf.set_mode': { this.requireLenovo(); const code = { quiet: 1, balanced: 2, performance: 3 }[a.mode as 'quiet' | 'balanced' | 'performance']; await this.ps(this.lenovoMethod('SetSmartFanMode', { Data: code }), ctx); return { mode: a.mode }; }
       case 'battery.set_conservation': { this.requireLenovo(); await this.ps(this.lenovoMethod('SetBatteryChargeMode', { Mode: a.enabled ? 3 : 1 }), ctx); return { conservation: a.enabled }; }
+      case 'fan.set_boost': { this.requireLenovo(); await this.ps(this.lenovoMethod('Fan_Set_FullSpeed', { Status: a.enabled ? 1 : 0 }), ctx).catch(() => { throw new ExecError('not_supported', 'Prepínač maximálnych otáčok nie je cez Lenovo WMI dostupný na tomto modeli.'); }); return { boost: a.enabled }; }
       case 'keyboard.set_backlight': { this.requireLenovo(); const lvl = { off: 0, low: 1, high: 2 }[a.level as 'off' | 'low' | 'high']; await this.ps(this.lenovoMethod('SetKeyboardBackLightStatus', { Status: lvl }), ctx).catch(() => { throw new ExecError('not_supported', 'Ovládanie podsvietenia nie je dostupné cez WMI.'); }); return { level: a.level }; }
 
       case 'audio.set_volume': await this.setVolume(a.percent as number, ctx); return { percent: a.percent };
