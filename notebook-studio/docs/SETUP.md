@@ -7,11 +7,23 @@ notebook aj mobil dostanú cez internet: malý VPS, Fly.io, Render, alebo doma z
 reverznou proxy s HTTPS.
 
 ```bash
+NS_DATA_FILE=/var/lib/notebook-studio/relay.json \
+NS_ALLOWED_ORIGINS=https://app.tvojadomena.sk \
+NS_TRUST_PROXY=1 \
 npm start -w @ns/relay        # počúva na PORT (predvolene 8787)
 ```
 
 Nasaď za HTTPS/WSS (napr. Caddy alebo Nginx), aby mobilná PWA mohla pripájať
 `wss://`. Verejná adresa nech je napr. `wss://relay.tvojadomena.sk`.
+
+Premenné relay:
+
+| Premenná | Význam |
+|---|---|
+| `PORT` | port (predvolene 8787) |
+| `NS_DATA_FILE` | súbor so spárovanými zariadeniami. **Nastav ho** — bez neho reštart relay zabudne párovania a musíš párovať znova. Zapisuje sa atomicky, drží len hashe tokenov a verejné kľúče. |
+| `NS_ALLOWED_ORIGINS` | povolené originy mobilnej PWA, oddelené čiarkou (napr. `https://app.tvojadomena.sk`). Predvolene `*`; pre produkciu obmedz. |
+| `NS_TRUST_PROXY=1` | čítať IP klienta z `X-Forwarded-For`. Zapni **len** keď relay beží za vlastnou reverznou proxy, inak sa dá IP podvrhnúť. |
 
 ## 2. Agent na notebooku (Windows 11)
 

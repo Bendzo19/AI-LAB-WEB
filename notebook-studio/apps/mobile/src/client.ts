@@ -1,6 +1,6 @@
 import {
-  type AppMessage, type CtlFrame, type E2EFrame, type Frame, PROTOCOL_VERSION,
-  aadFor, deriveSessionKey, exportPrivateKey, generateKeyPair, importKeyPair, msg, open, seal,
+  type AppMessage, type CtlFrame, type E2EFrame, Frame, PROTOCOL_VERSION,
+  aadFor, deriveSessionKey, exportPrivateKey, generateKeyPair, importKeyPair, msg, open, parseAppMessage, seal,
   type KeyPair, ReplayGuard,
 } from '@ns/protocol';
 
@@ -20,6 +20,7 @@ export interface ClientEvents {
   onChatTool?: (convId: string, callId: string, command: string, label: string, status: string) => void;
   onChatDone?: (convId: string, text: string, error?: string) => void;
   onScreenFrame?: (jpeg: string, w: number, h: number) => void;
+  onWakeResult?: (ok: boolean, error?: string) => void;
   onStatus?: (status: 'connecting' | 'online' | 'offline' | 'revoked') => void;
 }
 
@@ -82,17 +83,19 @@ export class NotebookClient {
 
   private async onRaw(raw: string) {
     let frame: Frame;
-    try { frame = JSON.parse(raw); } catch { return; }
+    try { frame = Frame.parse(JSON.parse(raw)); } catch { return; }
     if (frame.t === 'ctl') {
       if (frame.op === 'revoked') { this.ev.onStatus?.('revoked'); this.disconnect(); }
+      else if (frame.op === 'wake.result') this.ev.onWakeResult?.(!!frame.body.ok, frame.body.error ? String(frame.body.error) : undefined);
       return;
     }
-    if (frame.t === 'e2e' && this.key) {
+    if (frame.t === 'e2e' && frame.from === 'laptop' && this.key) {
       try {
-        const m = await open(this.key, frame.n, frame.c, aadFor(this.id!.deviceId, 'laptop', 'phone', this.id!.phoneId)) as AppMessage;
-        if (typeof m?.id !== 'string' || !this.guard.accept(m.id, m.ts)) return;
+        const raw = await open(this.key, frame.n, frame.c, aadFor(this.id!.deviceId, 'laptop', 'phone', this.id!.phoneId));
+        const m = parseAppMessage(raw);                  // overí tvar správy podľa schémy
+        if (!m || !this.guard.accept(m.id, m.ts)) return; // odmietne neplatnú alebo zopakovanú
         this.onMessage(m);
-      } catch { /* poškodená správa */ }
+      } catch { /* poškodená alebo podvrhnutá správa */ }
     }
   }
 

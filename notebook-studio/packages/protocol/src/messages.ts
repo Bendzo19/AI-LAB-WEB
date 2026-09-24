@@ -45,7 +45,7 @@ export type Frame = z.infer<typeof Frame>;
 const base = {
   /** jedinečné ID správy (ochrana proti opakovaniu) */
   id: z.string().min(8).max(64),
-  /** čas odoslania v ms; príjemca odmietne správu staršiu ako 2 minúty */
+  /** čas odoslania v ms; príjemca odmietne správu s odchýlkou nad 5 minút */
   ts: z.number().int(),
 };
 
@@ -83,7 +83,7 @@ export type AppMessageOf<T extends AppMessage['type']> = Extract<AppMessage, { t
 /** Ochrana proti opakovaniu a starým správam. */
 export class ReplayGuard {
   private seen = new Map<string, number>();
-  constructor(private maxAgeMs = 120_000, private maxEntries = 5000) {}
+  constructor(private maxAgeMs = 300_000, private maxEntries = 5000) {}
   accept(id: string, ts: number, now = Date.now()): boolean {
     if (Math.abs(now - ts) > this.maxAgeMs) return false;
     if (this.seen.has(id)) return false;
@@ -93,6 +93,12 @@ export class ReplayGuard {
     }
     return true;
   }
+}
+
+/** Overí dešifrovanú správu podľa schémy. Neplatnú vráti ako null (nič nevyhadzuje). */
+export function parseAppMessage(x: unknown): AppMessage | null {
+  const r = AppMessage.safeParse(x);
+  return r.success ? r.data : null;
 }
 
 export function newId(): string {

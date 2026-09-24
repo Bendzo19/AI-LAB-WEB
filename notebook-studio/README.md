@@ -25,7 +25,7 @@ docs/               ARCHITECTURE.md, SECURITY.md, SETUP.md
 ```bash
 cd notebook-studio
 npm install
-npm test              # 32 testov naprieč balíkmi, vrátane celej reťaze mobil↔relay↔agent
+npm test              # 48 testov naprieč balíkmi, vrátane celej reťaze mobil↔relay↔agent
 
 # tri terminály:
 npm start -w @ns/relay                          # relay na :8787

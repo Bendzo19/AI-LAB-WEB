@@ -1,5 +1,6 @@
 import type { CommandArgs, CommandName } from '@ns/protocol';
 import { ExecError, type Backend, type ExecContext } from './types.ts';
+import { SIM_SCREEN_H, SIM_SCREEN_JPEG, SIM_SCREEN_W } from './sim-screen.ts';
 
 /**
  * Simulovaný backend: rovnaké tvary odpovedí ako Windows, ale nič nemení.
@@ -67,7 +68,7 @@ export class SimulateBackend implements Backend {
       case 'power.restart': case 'power.shutdown': return { scheduled: true, delaySec: a.delaySec ?? 0, note: 'Simulácia: notebook by sa teraz ' + (name === 'power.restart' ? 'reštartoval' : 'vypol') + '.' };
       case 'power.reboot_to_firmware': return { note: 'Simulácia: reštart do BIOS-u.' };
       case 'power.cancel': return { cancelled: true };
-      case 'screen.snapshot': return { jpeg: '', w: a.maxWidth ?? 1280, h: Math.round((a.maxWidth as number ?? 1280) * 9 / 16), note: 'Simulácia nemá skutočnú obrazovku.' };
+      case 'screen.snapshot': return { jpeg: SIM_SCREEN_JPEG, w: SIM_SCREEN_W, h: SIM_SCREEN_H, note: 'Simulovaná obrazovka (nie je to tvoj skutočný displej).' };
       case 'files.list': return { items: [{ name: 'Dokumenty', dir: true }, { name: 'poznamky.txt', dir: false, sizeKb: 3 }], note: 'Simulovaný obsah priečinka.' };
       case 'files.read': return { text: 'Simulovaný obsah súboru.', note: 'V simulácii sa nečítajú skutočné súbory.' };
       case 'terminal.run': return { output: `> ${String(a.command)}\n(simulácia: príkaz sa nevykonal)`, note: 'Simulovaný terminál.' };

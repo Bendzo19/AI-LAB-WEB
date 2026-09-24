@@ -22,9 +22,9 @@ async function main() {
   for (const c of CASES) {
     const fx = new FakeExecutor();
     c.setup?.(fx);
-    const agent = new Agent(key, CAPS, fx.exec, { baseURL: process.env.ANTHROPIC_BASE_URL, model: process.env.NS_MODEL });
+    const agent = new Agent(CAPS, fx.exec, { apiKey: key, baseURL: process.env.ANTHROPIC_BASE_URL, model: process.env.NS_MODEL });
     try {
-      const res = await agent.send(c.prompt);
+      const res = await agent.send('eval', c.prompt);
       const errs = c.check(fx, res.text);
       if (errs.length === 0) { passed++; console.log(`✓ ${c.name}`); }
       else { fails.push(c.name); console.log(`✗ ${c.name}\n   ${errs.join('\n   ')}\n   → ${res.text.slice(0, 160)}`); }
