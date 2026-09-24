@@ -31,7 +31,7 @@ Premenné relay:
 npm run dev -w @ns/agent-windows
 ```
 
-Pri prvom spustení sa vytvoria kľúče a vypíše sa párovací kód. Konfigurácia je v
+Pri prvom spustení sa vytvoria kľúče a vypíše sa párovací kód. Ďalší kód (napr. na pridanie ďalšieho mobilu alebo po zmene tokenu) vypíšeš spustením agenta s prepínačom `--pair`. Spárované mobily prežijú reštart agenta. Konfigurácia je v
 `%APPDATA%\NotebookStudio\config.json`:
 
 ```jsonc

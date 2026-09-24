@@ -33,8 +33,10 @@ export class WindowsBackend implements Backend {
   }
 
   private ps(script: string, ctx?: ExecContext, timeoutMs = 60_000): Promise<string> {
+    // vynútime UTF-8 na výstupe, inak sa slovenské znaky v názvoch súborov/procesov rozbijú
+    const wrapped = '[Console]::OutputEncoding=[Text.Encoding]::UTF8; ' + script;
     return new Promise((resolve, reject) => {
-      const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-OutputFormat', 'Text', '-Command', script], { windowsHide: true });
+      const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-OutputFormat', 'Text', '-Command', wrapped], { windowsHide: true });
       let out = '', err = '';
       const timer = setTimeout(() => { child.kill(); reject(new ExecError('timeout', 'Príkaz PowerShell trval príliš dlho.')); }, timeoutMs);
       const onAbort = () => { child.kill(); reject(new ExecError('failed', 'Zrušené.')); };
@@ -51,6 +53,12 @@ export class WindowsBackend implements Backend {
   }
   private requireAdmin() { if (!this.admin) throw new ExecError('requires_admin', 'Táto akcia potrebuje agenta so zvýšenými oprávneniami.'); }
   private requireLenovo() { if (!this.lenovo || !this.wmiNamespace) throw new ExecError('not_supported', 'Rozhranie Lenovo WMI nie je na tomto notebooku dostupné.'); }
+  /** Volanie WMI metódy Lenovo cez Invoke-CimMethod (objekty CimInstance nemajú volateľné metódy). */
+  private lenovoMethod(method: string, args?: Record<string, number>): string {
+    const inst = `(Get-CimInstance -Namespace ${this.wmiNamespace} -ClassName Lenovo_GameZoneData)`;
+    const argStr = args ? ` -Arguments @{ ${Object.entries(args).map(([k, v]) => `${k} = ${v}`).join('; ')} }` : '';
+    return `Invoke-CimMethod -InputObject ${inst} -MethodName ${method}${argStr}`;
+  }
 
   async run<N extends CommandName>(name: N, args: CommandArgs<N>, ctx: ExecContext): Promise<unknown> {
     const a = args as Record<string, unknown>;
@@ -71,7 +79,7 @@ export class WindowsBackend implements Backend {
 
       case 'app.list': return { apps: Object.keys(this.known) };
       case 'app.launch': { const path = this.known[String(a.app)]; if (!path) throw new ExecError('not_supported', `Aplikácia „${a.app}“ nie je v zozname povolených.`); await this.ps(`Start-Process -FilePath ${psQuote(path)}`, ctx); return { launched: a.app }; }
-      case 'app.close': await this.ps(`Get-Process -Name ${psQuote(String(a.app))} -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null }`, ctx); return { closed: a.app };
+      case 'app.close': await this.ps(`Get-Process -Name ${psQuote(String(a.app))} -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null }; $true`, ctx); return { closed: a.app };
 
       case 'power.lock': await this.ps('rundll32.exe user32.dll,LockWorkStation', ctx); return { done: true };
       case 'power.sleep': await this.ps('Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState("Suspend",$false,$false)', ctx); return { done: true };
@@ -81,19 +89,20 @@ export class WindowsBackend implements Backend {
       case 'power.cancel': await this.ps('shutdown /a', ctx).catch(() => {}); return { cancelled: true };
       case 'power.reboot_to_firmware': this.requireAdmin(); await this.ps('shutdown /r /fw /t 0', ctx); return { done: true };
 
-      case 'perf.get': { this.requireLenovo(); const v = await this.ps(`(Get-CimInstance -Namespace ${this.wmiNamespace} -ClassName Lenovo_GameZoneData).GetSmartFanMode().Data`, ctx).catch(() => ''); return { mode: mapLenovoMode(v.trim()) }; }
-      case 'perf.set_mode': { this.requireLenovo(); const code = { quiet: 1, balanced: 2, performance: 3 }[a.mode as 'quiet' | 'balanced' | 'performance']; await this.ps(`(Get-CimInstance -Namespace ${this.wmiNamespace} -ClassName Lenovo_GameZoneData).SetSmartFanMode(${code})`, ctx); return { mode: a.mode }; }
-      case 'battery.set_conservation': { this.requireLenovo(); await this.ps(`(Get-CimInstance -Namespace ${this.wmiNamespace} -ClassName Lenovo_GameZoneData).SetBatteryChargeMode(${a.enabled ? 3 : 1})`, ctx); return { conservation: a.enabled }; }
-      case 'keyboard.set_backlight': { this.requireLenovo(); const lvl = { off: 0, low: 1, high: 2 }[a.level as 'off' | 'low' | 'high']; await this.ps(`(Get-CimInstance -Namespace ${this.wmiNamespace} -ClassName Lenovo_GameZoneData).SetKeyboardBackLightStatus(${lvl})`, ctx).catch(() => { throw new ExecError('not_supported', 'Ovládanie podsvietenia nie je dostupné cez WMI.'); }); return { level: a.level }; }
+      // WMI metódy sa volajú cez Invoke-CimMethod (objekty z Get-CimInstance nemajú volateľné metódy)
+      case 'perf.get': { this.requireLenovo(); const v = await this.ps(`(${this.lenovoMethod('GetSmartFanMode')}).Data`, ctx).catch(() => ''); return { mode: mapLenovoMode(v.trim()) }; }
+      case 'perf.set_mode': { this.requireLenovo(); const code = { quiet: 1, balanced: 2, performance: 3 }[a.mode as 'quiet' | 'balanced' | 'performance']; await this.ps(this.lenovoMethod('SetSmartFanMode', { Data: code }), ctx); return { mode: a.mode }; }
+      case 'battery.set_conservation': { this.requireLenovo(); await this.ps(this.lenovoMethod('SetBatteryChargeMode', { Mode: a.enabled ? 3 : 1 }), ctx); return { conservation: a.enabled }; }
+      case 'keyboard.set_backlight': { this.requireLenovo(); const lvl = { off: 0, low: 1, high: 2 }[a.level as 'off' | 'low' | 'high']; await this.ps(this.lenovoMethod('SetKeyboardBackLightStatus', { Status: lvl }), ctx).catch(() => { throw new ExecError('not_supported', 'Ovládanie podsvietenia nie je dostupné cez WMI.'); }); return { level: a.level }; }
 
       case 'audio.set_volume': await this.setVolume(a.percent as number, ctx); return { percent: a.percent };
-      case 'audio.mute': await this.ps(`(New-Object -ComObject WScript.Shell).SendKeys([char]173)`, ctx); return { muted: a.muted };
-      case 'display.set_brightness': await this.ps(`(Get-CimInstance -Namespace root\\WMI -ClassName WmiMonitorBrightnessMethods).WmiSetBrightness(1,${Number(a.percent)})`, ctx); return { percent: a.percent };
+      case 'audio.mute': await this.ps(`(New-Object -ComObject WScript.Shell).SendKeys([char]173)`, ctx); return { toggled: true, note: 'Stlmenie je prepínač; appka zobrazuje želaný stav.' };
+      case 'display.set_brightness': await this.ps(`$m = Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods; Invoke-CimMethod -InputObject $m -MethodName WmiSetBrightness -Arguments @{ Timeout = 1; Brightness = [byte]${Number(a.percent)} } | Out-Null`, ctx); return { percent: a.percent };
       case 'notify.show': await this.toast(String(a.title), String(a.text ?? ''), ctx); return { shown: true };
 
       case 'network.status': return this.json('Get-NetIPConfiguration | Select-Object InterfaceAlias,IPv4Address,@{n="mac";e={(Get-NetAdapter -InterfaceIndex $_.InterfaceIndex).MacAddress}}', ctx);
       case 'network.wol_status': return this.wolStatus(ctx);
-      case 'network.wol_enable': this.requireAdmin(); await this.ps(`Enable-NetAdapterPowerManagement -Name ${psQuote(String(a.adapter))} -WakeOnMagicPacket; powercfg /hibernate off; REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power" /v HiberbootEnabled /t REG_DWORD /d 0 /f`, ctx); return { adapter: a.adapter, armed: true };
+      case 'network.wol_enable': this.requireAdmin(); await this.ps(`Enable-NetAdapterPowerManagement -Name ${psQuote(String(a.adapter))} -WakeOnMagicPacket; REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power" /v HiberbootEnabled /t REG_DWORD /d 0 /f`, ctx); return { adapter: a.adapter, armed: true };
       case 'bios.info': return this.biosInfo(ctx);
 
       case 'screen.snapshot': return this.snapshot(Number(a.maxWidth ?? 1280), ctx);
@@ -112,7 +121,7 @@ export class WindowsBackend implements Backend {
       this.ps('try { [math]::Round(((Get-CimInstance -Namespace root/WMI -ClassName MSAcpi_ThermalZoneTemperature).CurrentTemperature[0]/10)-273.15) } catch { 0 }', ctx).then(s => Number(s.trim()) || null).catch(() => null),
     ]);
     const disk = await this.json<Record<string, unknown>>('$d = Get-PSDrive C; [pscustomobject]@{ usedGb = [math]::Round($d.Used/1GB); totalGb = [math]::Round(($d.Used+$d.Free)/1GB) }', ctx).catch(() => ({}));
-    return { battery, temps: { cpu: temps }, disk, mode: this.lenovo ? mapLenovoMode((await this.ps(`(Get-CimInstance -Namespace ${this.wmiNamespace} -ClassName Lenovo_GameZoneData).GetSmartFanMode().Data`, ctx).catch(() => '')).trim()) : null, note: temps == null ? 'Teplotu CPU nevie prečítať každý model priamo cez WMI.' : undefined };
+    return { battery, temps: { cpu: temps }, disk, mode: this.lenovo ? mapLenovoMode((await this.ps(`(${this.lenovoMethod('GetSmartFanMode')}).Data`, ctx).catch(() => '')).trim()) : null, note: temps == null ? 'Teplotu CPU nevie prečítať každý model priamo cez WMI.' : undefined };
   }
   private async analyzeCleanup(ctx: ExecContext) {
     const temp = await this.ps('(Get-ChildItem $env:TEMP -Recurse -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum', ctx).then(s => bToGb(s)).catch(() => 0);
@@ -120,16 +129,18 @@ export class WindowsBackend implements Backend {
   }
   private async runCleanup(categories: string[], ctx: ExecContext) {
     let freed = 0;
-    if (categories.includes('temp')) { const before = await this.ps('(Get-ChildItem $env:TEMP -Recurse -File -EA SilentlyContinue|Measure-Object Length -Sum).Sum', ctx).then(Number).catch(() => 0); await this.ps('Get-ChildItem $env:TEMP -Recurse -File -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue', ctx); freed += before; }
+    if (categories.includes('temp')) { const before = await this.ps('(Get-ChildItem $env:TEMP -Recurse -File -EA SilentlyContinue|Measure-Object Length -Sum).Sum', ctx).then(Number).catch(() => 0); await this.ps('Get-ChildItem $env:TEMP -Recurse -File -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue; $true', ctx); freed += before; }
     if (categories.includes('recycle_bin')) await this.ps('Clear-RecycleBin -Force -ErrorAction SilentlyContinue', ctx).catch(() => {});
     return { freedGb: bToGb(String(freed)), categories };
   }
   private async setVolume(percent: number, ctx: ExecContext) {
     // bez externých závislostí: cez SendKeys volume-down na 0 a späť hore
-    await this.ps(`$w = New-Object -ComObject WScript.Shell; 1..50 | %{ $w.SendKeys([char]174) }; 1..${Math.round(percent / 2)} | %{ $w.SendKeys([char]175) }`, ctx);
+    const steps = Math.round(percent / 2);
+    const up = steps > 0 ? `1..${steps}` : '@()';
+    await this.ps(`$w = New-Object -ComObject WScript.Shell; 1..50 | %{ $w.SendKeys([char]174) }; ${up} | %{ $w.SendKeys([char]175) }`, ctx);
   }
   private async toast(title: string, text: string, ctx: ExecContext) {
-    await this.ps(`[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType=WindowsRuntime] > $null; $t=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); $x=$t.GetElementsByTagName('text'); $x.Item(0).AppendChild($t.CreateTextNode(${psQuote(title)}))>$null; $x.Item(1).AppendChild($t.CreateTextNode(${psQuote(text)}))>$null; [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Notebook Studio').Show([Windows.UI.Notifications.ToastNotification]::new($t))`, ctx).catch(() => {});
+    await this.ps(`[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType=WindowsRuntime] > $null; $t=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); $x=$t.GetElementsByTagName('text'); $x.Item(0).AppendChild($t.CreateTextNode(${psQuote(title)}))>$null; $x.Item(1).AppendChild($t.CreateTextNode(${psQuote(text)}))>$null; [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe').Show([Windows.UI.Notifications.ToastNotification]::new($t))`, ctx).catch(() => {});
   }
   private async wolStatus(ctx: ExecContext) {
     const fast = await this.ps('(Get-ItemProperty "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power" -Name HiberbootEnabled -EA SilentlyContinue).HiberbootEnabled', ctx).then(s => s.trim()).catch(() => '?');
@@ -139,9 +150,12 @@ export class WindowsBackend implements Backend {
   private async biosInfo(ctx: ExecContext) {
     return this.json('$b=Get-CimInstance Win32_BIOS; $s=Confirm-SecureBootUEFI -EA SilentlyContinue; [pscustomobject]@{ version=$b.SMBIOSBIOSVersion; date=$b.ReleaseDate; secureBoot=$s; uefi=($env:firmware_type -eq "UEFI") }', ctx);
   }
-  private async snapshot(maxWidth: number, ctx: ExecContext) {
-    const b64 = await this.ps(`Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $b=[System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp=New-Object Drawing.Bitmap $b.Width,$b.Height; $g=[Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[Drawing.Point]::Empty,$b.Size); $scale=[math]::Min(1,${maxWidth}/$b.Width); $w=[int]($b.Width*$scale); $h=[int]($b.Height*$scale); $r=New-Object Drawing.Bitmap $w,$h; $g2=[Drawing.Graphics]::FromImage($r); $g2.DrawImage($bmp,0,0,$w,$h); $ms=New-Object IO.MemoryStream; $enc=[Drawing.Imaging.ImageCodecInfo]::GetImageEncoders()|?{$_.MimeType -eq 'image/jpeg'}; $p=New-Object Drawing.Imaging.EncoderParameters 1; $p.Param[0]=New-Object Drawing.Imaging.EncoderParameter ([Drawing.Imaging.Encoder]::Quality),60; $r.Save($ms,$enc,$p); [Convert]::ToBase64String($ms.ToArray())`, ctx, 15_000);
-    return { jpeg: b64.trim(), w: maxWidth };
+  private async snapshot(maxWidth: number, ctx: ExecContext): Promise<{ jpeg: string; w: number; h: number }> {
+    // SetProcessDPIAware: bez neho by sa na škálovanom displeji (125/150 %) zachytil len výrez
+    const script = `Add-Type -AssemblyName System.Windows.Forms,System.Drawing; Add-Type 'using System;using System.Runtime.InteropServices;public class DPI{[DllImport("user32.dll")]public static extern bool SetProcessDPIAware();}'; [DPI]::SetProcessDPIAware() | Out-Null; $b=[System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp=New-Object Drawing.Bitmap $b.Width,$b.Height; $g=[Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[Drawing.Point]::Empty,$b.Size); $scale=[math]::Min(1,${maxWidth}/$b.Width); $w=[int]($b.Width*$scale); $h=[int]($b.Height*$scale); $r=New-Object Drawing.Bitmap $w,$h; $g2=[Drawing.Graphics]::FromImage($r); $g2.DrawImage($bmp,0,0,$w,$h); $ms=New-Object IO.MemoryStream; $enc=[Drawing.Imaging.ImageCodecInfo]::GetImageEncoders()|?{$_.MimeType -eq 'image/jpeg'}; $p=New-Object Drawing.Imaging.EncoderParameters 1; $p.Param[0]=New-Object Drawing.Imaging.EncoderParameter ([Drawing.Imaging.Encoder]::Quality),60; $r.Save($ms,$enc,$p); [pscustomobject]@{ jpeg=[Convert]::ToBase64String($ms.ToArray()); w=$w; h=$h } | ConvertTo-Json -Compress`;
+    const r = JSON.parse((await this.ps(script, ctx, 15_000)) || 'null') as { jpeg: string; w: number; h: number } | null;
+    if (!r || !r.jpeg) throw new ExecError('failed', 'Snímku obrazovky sa nepodarilo vytvoriť.');
+    return r;
   }
 }
 

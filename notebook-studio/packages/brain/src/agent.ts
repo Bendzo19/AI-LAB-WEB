@@ -97,8 +97,19 @@ export class Agent {
     return h;
   }
 
-  /** Jedno kolo konverzácie: správa používateľa → (nástroje) → odpoveď. */
+  /** Jedno kolo konverzácie: správa používateľa → (nástroje) → odpoveď.
+   * Volania v tej istej konverzácii sa serializujú: nová správa počká, kým
+   * predchádzajúca (napr. práve rušená) dobehne, aby sa história nezmiešala. */
   async send(convId: string, userText: string, ev: AgentEvents = {}, signal: AbortSignal = new AbortController().signal): Promise<AgentTurnResult> {
+    const prev = this.locks.get(convId) ?? Promise.resolve();
+    const run = prev.catch(() => {}).then(() => this.turn(convId, userText, ev, signal));
+    this.locks.set(convId, run.catch(() => {}));
+    return run;
+  }
+  private locks = new Map<string, Promise<unknown>>();
+
+  private async turn(convId: string, userText: string, ev: AgentEvents, signal: AbortSignal): Promise<AgentTurnResult> {
+    if (signal.aborted) throw Object.assign(new Error('Zrušené.'), { code: 'cancelled' });
     const hist = this.history(convId);
     const start = hist.length;
     hist.push({ role: 'user', content: userText });
@@ -106,6 +117,8 @@ export class Agent {
       return await this.loop(hist, ev, signal);
     } catch (e) {
       hist.length = start; // nedokončené kolo sa zahodí, história ostane platná
+      // prerušenie zo SDK (APIUserAbortError) nemá .code — zjednotíme na 'cancelled'
+      if (signal.aborted) throw Object.assign(new Error('Zrušené.'), { code: 'cancelled' });
       throw e;
     }
   }

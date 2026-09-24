@@ -1,4 +1,4 @@
-import { COMMANDS, ProtocolError, parseArgs, type CommandName } from '@ns/protocol';
+import { COMMANDS, ProtocolError, isCommandName, parseArgs, type CommandName } from '@ns/protocol';
 import type { Backend, ExecContext } from './executor/types.ts';
 
 /**
@@ -33,8 +33,8 @@ export class Runner {
   }
 
   async run(rawName: string, rawArgs: unknown, source: 'phone' | 'agent', ctx: ExecContext): Promise<unknown> {
-    const name = rawName as CommandName;
-    if (!(name in COMMANDS)) throw new ProtocolError('unknown_command', `Neznámy príkaz: ${rawName}`);
+    if (!isCommandName(rawName)) throw new ProtocolError('unknown_command', `Neznámy príkaz: ${rawName}`);
+    const name: CommandName = rawName;
     const def = COMMANDS[name];
     this.checkRequirements(name);
     const args = parseArgs(name, rawArgs);

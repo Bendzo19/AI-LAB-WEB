@@ -145,4 +145,18 @@ describe('Agent — slučka nástrojov', () => {
     await agent.send('telefon2', 'druhý');
     expect((requests[1]!.messages as unknown[])).toHaveLength(1);
   });
+
+  it('zrušenie a hneď nová správa v tej istej konverzácii nepokazí históriu', async () => {
+    const { client, requests } = fakeClient([{ content: [text('druhá ok')] }]);
+    const agent = new Agent(CAPS, new FakeExecutor().exec, { client });
+    const ctrl = new AbortController();
+    const p1 = agent.send('c', 'prvá', {}, ctrl.signal);
+    ctrl.abort();                                     // prvé kolo zrušené ešte pred volaním AI
+    await expect(p1).rejects.toMatchObject({ code: 'cancelled' });
+    const res = await agent.send('c', 'druhá');       // serializuje sa po prvej, s vlastnou históriou
+    expect(res.text).toBe('druhá ok');
+    const msgs = requests.at(-1)!.messages as { role: string; content: unknown }[];
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]!.content).toBe('druhá');
+  });
 });

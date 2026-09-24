@@ -39,7 +39,7 @@ export class NotebookClient {
   private keyPair!: KeyPair;
   private key: CryptoKey | null = null;
   private guard = new ReplayGuard();
-  private pending = new Map<string, { resolve: (v: { ok: boolean; data?: unknown; error?: { code: string; message: string } }) => void }>();
+  private pending = new Map<string, { resolve: (v: { ok: boolean; data?: unknown; error?: { code: string; message: string } }) => void; timer: ReturnType<typeof setTimeout> }>();
 
   constructor(
     private relayHttp: string,
@@ -75,11 +75,16 @@ export class NotebookClient {
     const ws = this.wsFactory(url, [`bearer.${this.id.phoneToken}`]);
     this.ws = ws;
     ws.addEventListener('open', () => this.ev.onStatus?.('online'));
-    ws.addEventListener('close', () => { this.ev.onStatus?.('offline'); });
+    ws.addEventListener('close', () => { this.ev.onStatus?.('offline'); this.failPending('Spojenie sa prerušilo.'); });
     ws.addEventListener('error', () => { this.ev.onStatus?.('offline'); });
     ws.addEventListener('message', (e) => void this.onRaw(String(e.data)));
   }
-  disconnect() { this.ws?.close(); this.ws = null; }
+  disconnect() { this.ws?.close(); this.ws = null; this.failPending('Odpojené.'); }
+
+  /** Zruší všetky čakajúce príkazy chybou (napr. pri páde spojenia). */
+  private failPending(message: string) {
+    for (const [id, p] of this.pending) { clearTimeout(p.timer); p.resolve({ ok: false, error: { code: 'offline', message } }); this.pending.delete(id); }
+  }
 
   private async onRaw(raw: string) {
     let frame: Frame;
@@ -104,7 +109,7 @@ export class NotebookClient {
       case 'telemetry': return this.ev.onTelemetry?.(m.data);
       case 'hello': return this.ev.onHello?.({ host: m.host, devMode: m.devMode, lenovo: m.lenovo, admin: m.admin });
       case 'cmd.confirm_required': return this.ev.onConfirmRequired?.({ requestId: m.requestId, title: m.title, text: m.text, risk: m.risk, expiresAt: m.expiresAt });
-      case 'cmd.result': { const p = this.pending.get(m.requestId); if (p) { this.pending.delete(m.requestId); p.resolve({ ok: m.ok, data: m.data, error: m.error }); } return; }
+      case 'cmd.result': { const p = this.pending.get(m.requestId); if (p) { clearTimeout(p.timer); this.pending.delete(m.requestId); p.resolve({ ok: m.ok, data: m.data, error: m.error }); } return; }
       case 'chat.delta': return this.ev.onChatDelta?.(m.convId, m.text);
       case 'chat.tool': return this.ev.onChatTool?.(m.convId, m.callId, m.command, m.label, m.status);
       case 'chat.done': return this.ev.onChatDone?.(m.convId, m.text, m.error);
@@ -120,10 +125,14 @@ export class NotebookClient {
   }
 
   /** Odošle príkaz a počká na výsledok (potvrdenia rieši onConfirmRequired + confirm). */
-  async command(name: string, args: unknown = {}): Promise<{ ok: boolean; data?: unknown; error?: { code: string; message: string } }> {
+  async command(name: string, args: unknown = {}, timeoutMs = 75_000): Promise<{ ok: boolean; data?: unknown; error?: { code: string; message: string } }> {
     const m = msg('cmd', { name, args });
-    const p = new Promise<{ ok: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => this.pending.set(m.id, { resolve }));
-    await this.sealSend(m);
+    const p = new Promise<{ ok: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
+      // časový limit pokrýva 60 s okno na potvrdenie + rezervu; potom sa nečaká donekonečna
+      const timer = setTimeout(() => { if (this.pending.delete(m.id)) resolve({ ok: false, error: { code: 'timeout', message: 'Notebook neodpovedal načas.' } }); }, timeoutMs);
+      this.pending.set(m.id, { resolve, timer });
+    });
+    try { await this.sealSend(m); } catch (e) { const q = this.pending.get(m.id); if (q) { clearTimeout(q.timer); this.pending.delete(m.id); q.resolve({ ok: false, error: { code: 'offline', message: (e as Error).message } }); } }
     return p;
   }
   async confirm(requestId: string, approved: boolean) { await this.sealSend(msg('cmd.confirm', { requestId, approved })); }

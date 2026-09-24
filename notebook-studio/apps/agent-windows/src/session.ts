@@ -1,4 +1,4 @@
-import { ReplayGuard, aadFor, deriveSessionKey, open, seal, type AppMessage, type KeyPair } from '@ns/protocol';
+import { ReplayGuard, aadFor, deriveSessionKey, open, parseAppMessage, seal, type AppMessage, type KeyPair } from '@ns/protocol';
 
 /**
  * Šifrované spojenie s jedným telefónom. Drží odvodený kľúč a ochranu proti
@@ -24,9 +24,9 @@ export class PhoneSession {
 
   /** Dešifruje a overí správu od tohto telefónu. Vráti null pri opakovaní/starej správe. */
   async openFrom(n: string, c: string): Promise<AppMessage | null> {
-    const msg = await open(this.key, n, c, aadFor(this.deviceId, 'phone', 'laptop', this.phoneId)) as AppMessage;
-    if (typeof msg?.id !== 'string' || typeof msg?.ts !== 'number') return null;
-    if (!this.guard.accept(msg.id, msg.ts)) return null;
+    const msg = parseAppMessage(await open(this.key, n, c, aadFor(this.deviceId, 'phone', 'laptop', this.phoneId)));
+    if (!msg) return null;                          // neplatný tvar správy
+    if (!this.guard.accept(msg.id, msg.ts)) return null; // opakovanie alebo stará správa
     return msg;
   }
 }

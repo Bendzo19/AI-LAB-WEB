@@ -37,19 +37,24 @@ class LaptopAgent {
 
   private caps() { return { devMode: this.cfg.devMode, lenovo: this.backend.lenovo, admin: this.backend.admin, hub: true }; }
 
-  async pairIfNeeded(): Promise<void> {
-    if (this.cfg.deviceId && this.cfg.laptopToken) return;
+  /** Zaregistruje notebook na relay a vypíše párovací kód.
+   * `force` = vypýtať nový kód aj pri už spárovanom notebooku (--pair). */
+  async pairIfNeeded(force = false): Promise<void> {
+    const paired = !!(this.cfg.deviceId && this.cfg.laptopToken);
+    if (paired && !force) return;
     const base = this.cfg.relayUrl.replace(/^ws/, 'http');
     const headers: Record<string, string> = { 'content-type': 'application/json' };
-    if (this.cfg.deviceId && this.cfg.laptopToken) headers.authorization = `Bearer ${this.cfg.laptopToken}`;
-    const res = await fetch(`${base}/v1/pair/start`, { method: 'POST', headers, body: JSON.stringify({ deviceId: this.cfg.deviceId ?? undefined, laptopPub: this.keyPair.publicRaw, name: this.cfg.name }) });
-    if (!res.ok) throw new Error(`Párovanie s relay zlyhalo (${res.status}). Skontroluj NS_RELAY.`);
+    // existujúci notebook sa musí preukázať tokenom; deviceId bez tokenu = neplatné, začni odznova
+    const sendDeviceId = paired ? this.cfg.deviceId! : undefined;
+    if (paired) headers.authorization = `Bearer ${this.cfg.laptopToken}`;
+    const res = await fetch(`${base}/v1/pair/start`, { method: 'POST', headers, body: JSON.stringify({ deviceId: sendDeviceId, laptopPub: this.keyPair.publicRaw, name: this.cfg.name }) });
+    if (!res.ok) throw new Error(`Párovanie s relay zlyhalo (${res.status}). Skontroluj adresu relaya (NS_RELAY) a či beží.`);
     const body = await res.json() as { deviceId: string; laptopToken?: string; code: string };
     this.cfg = { ...this.cfg, deviceId: body.deviceId, laptopToken: body.laptopToken ?? this.cfg.laptopToken };
-    await saveConfig(this.cfg);
+    saveConfig(this.cfg);
     console.log('\n═══════════════════════════════════════');
     console.log(`  Párovací kód pre mobil:  ${body.code}`);
-    console.log('  Zadaj ho v aplikácii Notebook Studio.');
+    console.log('  Zadaj ho v aplikácii Notebook Studio (platí 5 minút).');
     console.log('═══════════════════════════════════════\n');
   }
 
@@ -58,16 +63,41 @@ class LaptopAgent {
     const url = `${this.cfg.relayUrl}/v1/ws?role=laptop&device=${encodeURIComponent(this.cfg.deviceId!)}`;
     const ws = new WebSocket(url, [`bearer.${this.cfg.laptopToken}`]);
     this.ws = ws;
-    ws.on('open', () => { console.log('[agent] pripojený na relay'); this.reconnectDelay = 1000; this.startTelemetry(); });
+    ws.on('open', () => { console.log('[agent] pripojený na relay'); this.reconnectDelay = 1000; this.startTelemetry(); this.startHeartbeat(ws); });
+    ws.on('pong', () => { this.wsAlive = true; });
     ws.on('message', (raw, isBinary) => { if (!isBinary) void this.onFrame(String(raw)); });
     ws.on('close', (code) => {
-      this.stopTelemetry();
-      if (code === 4401) { console.error('[agent] relay odmietol token. Zmaž deviceId/laptopToken z konfigurácie a spáruj znova.'); this.stopped = true; return; }
+      this.cleanupConnection();
+      if (code === 4401) { console.error('[agent] relay odmietol token. Spusti agenta s --pair a spáruj znova.'); this.stopped = true; return; }
       const delay = this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30_000);
       console.log(`[agent] spojenie zatvorené (${code}), skúšam o ${Math.round(delay / 1000)} s`);
       setTimeout(() => this.connect(), delay);
     });
     ws.on('error', (e) => console.error('[agent] chyba spojenia:', (e as Error).message));
+  }
+
+  /** Upratanie pri páde spojenia: timery telemetrie a obrazovky, watchdog,
+   * a „pozdravené“ telefóny, aby po obnove dostali hello nanovo. */
+  private cleanupConnection() {
+    this.stopTelemetry();
+    if (this.heartbeat) { clearInterval(this.heartbeat); this.heartbeat = null; }
+    for (const phoneId of this.peers.keys()) this.stopScreen(phoneId);
+    this.greeted.clear();
+  }
+
+  /** Watchdog: ak relay neodpovie na ping, spojenie ukončíme (→ reconnect).
+   * Chytí polomŕtve spojenie po uspaní notebooku alebo zmene siete. */
+  private wsAlive = true;
+  private heartbeat: ReturnType<typeof setInterval> | null = null;
+  private startHeartbeat(ws: WebSocket) {
+    if (this.heartbeat) clearInterval(this.heartbeat);
+    this.wsAlive = true;
+    this.heartbeat = setInterval(() => {
+      if (ws !== this.ws || ws.readyState !== ws.OPEN) return;
+      if (!this.wsAlive) { console.log('[agent] relay neodpovedá, obnovujem spojenie'); ws.terminate(); return; }
+      this.wsAlive = false;
+      try { ws.ping(); } catch { /* ignore */ }
+    }, 25_000);
   }
 
   private send(frame: unknown) { if (this.ws && this.ws.readyState === this.ws.OPEN) this.ws.send(JSON.stringify(frame)); }
@@ -121,15 +151,29 @@ class LaptopAgent {
     const pend = this.pendingPairs.get(phoneId);
     this.pendingPairs.delete(phoneId);
     if (!accept || !pend) { console.log('[párovanie] zamietnuté'); return; }
-    const session = await PhoneSession.create(this.keyPair, pend.phonePub, this.cfg.deviceId!, phoneId);
-    const confirm = this.confirmFn(phoneId);
-    const runner = new Runner(this.backend, { devMode: this.cfg.devMode }, confirm);
+    await this.addPeer({ phoneId, phonePub: pend.phonePub, phoneName });
+    // zapamätaj telefón, nech prežije reštart agenta
+    this.cfg.phones = [...this.cfg.phones.filter(p => p.phoneId !== phoneId), { phoneId, phonePub: pend.phonePub, phoneName }];
+    saveConfig(this.cfg);
+    this.send({ v: 1, t: 'ctl', op: 'pair.accepted', body: { phoneId } } satisfies CtlFrame);
+    console.log(`[párovanie] „${phoneName}“ pripojený.`);
+  }
+
+  /** Vytvorí spojenie s telefónom (session, runner, mozog). Používa sa pri
+   * párovaní aj pri obnove spárovaných telefónov po reštarte. */
+  private async addPeer(p: { phoneId: string; phonePub: string; phoneName: string }) {
+    const session = await PhoneSession.create(this.keyPair, p.phonePub, this.cfg.deviceId!, p.phoneId);
+    const runner = new Runner(this.backend, { devMode: this.cfg.devMode }, this.confirmFn(p.phoneId));
     const brain = this.cfg.anthropicApiKey
       ? new Brain(this.caps(), (call, signal) => runner.run(call.command, call.args, 'agent', { signal }), { apiKey: this.cfg.anthropicApiKey, baseURL: this.cfg.anthropicBaseUrl })
       : null;
-    this.peers.set(phoneId, { session, runner, brain, chats: new Map(), screen: null });
-    this.send({ v: 1, t: 'ctl', op: 'pair.accepted', body: { phoneId } } satisfies CtlFrame);
-    console.log(`[párovanie] „${phoneName}“ pripojený.`);
+    this.peers.set(p.phoneId, { session, runner, brain, chats: new Map(), screen: null });
+  }
+
+  /** Obnoví spárované telefóny z konfigurácie (po štarte, pred pripojením). */
+  async restorePeers() {
+    for (const p of this.cfg.phones) await this.addPeer(p);
+    if (this.cfg.phones.length) console.log(`[agent] obnovených spárovaných telefónov: ${this.cfg.phones.length}`);
   }
 
   private async sendHello(phoneId: string) {
@@ -227,9 +271,12 @@ class LaptopAgent {
 }
 
 async function main() {
-  const loaded = await loadConfig();
+  const forcePair = process.argv.includes('--pair');
+  const loaded = loadConfig();
+  // deviceId bez tokenu je neúplný stav (napr. po zlyhaní zápisu) → začni odznova
+  if (loaded.deviceId && !loaded.laptopToken) { loaded.deviceId = null; loaded.phones = []; }
   const { cfg, keyPair } = await ensureKeyPair(loaded);
-  await saveConfig(cfg);
+  saveConfig(cfg);
 
   let backend: Backend;
   if (SIMULATE) { backend = new SimulateBackend(); console.log('[agent] beží v SIMULOVANOM režime (nič sa na notebooku nemení)'); }
@@ -237,7 +284,8 @@ async function main() {
   if (!cfg.anthropicApiKey) console.log('[agent] bez API kľúča: AI agent je vypnutý, priame príkazy fungujú.');
 
   const agent = new LaptopAgent(cfg, keyPair, backend);
-  await agent.pairIfNeeded();
+  await agent.restorePeers();
+  await agent.pairIfNeeded(forcePair);
   agent.connect();
 }
 
