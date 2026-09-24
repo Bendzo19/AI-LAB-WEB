@@ -18,10 +18,20 @@ príkazy za teba.
 
 1. Notebook ukáže jednorazový **8-znakový kód** (bez zameniteľných znakov).
 2. Mobil kód zadá a pošle svoj verejný kľúč.
-3. Obe strany vypočítajú **overovací kód (SAS)** — 6 číslic z hashu oboch
+3. Obe strany vypočítajú **overovací kód (SAS)** — 8 číslic z hashu oboch
    verejných kľúčov. Používateľ potvrdí na notebooku, že sa číslo zhoduje s
-   mobilom. Tým sa vylúči útok „man in the middle“ cez podvrhnuté kľúče.
+   mobilom. Zhodné číslo znamená, že obe strany pracujú s rovnakou dvojicou
+   kľúčov.
 4. Až po potvrdení na notebooku relay pustí šifrované správy od telefónu.
+
+**Hranica záruky SAS.** Overovací kód spoľahlivo odhalí zámenu kľúčov *pasívnym*
+relayom aj náhodné prehodenie kľúčov medzi paralelnými párovaniami. Nechráni však
+úplne pred *aktívne zlomyseľným* relayom: ten je koncovým bodom oboch výmen kľúčov
+a pri krátkom SAS bez „záväzku“ (commitment) by vedel generovať náhradné kľúče, kým
+sa čísla na oboch obrazovkách nezhodnú. Preto v súčasnej verzii platí predpoklad,
+že **relay je pod tvojou kontrolou** (self-hosted). Úplné riešenie (commit-reveal na
+efemérnych kľúčoch alebo PAKE nad párovacím kódom) je plánované spevnenie pred tým,
+než by relay bežal ako verejná služba mimo tvojej kontroly.
 
 ## Tokeny a odvolanie
 
@@ -64,6 +74,9 @@ príkazy za teba.
 
 ## Zvyškové riziká
 
+- **Aktívne zlomyseľný relay** by pri súčasnom SAS bez commitmentu vedel odpočúvať
+  (viď „Hranica záruky SAS“ vyššie). Mitigácia teraz: prevádzkuj relay sám. Plán:
+  doplniť commit-reveal / PAKE pred verejným nasadením relaya.
 - Bezpečnosť závisí od toho, že **relay a API kľúč** sú pod tvojou kontrolou a
   že párovací **SAS kód** naozaj porovnáš. Kód potvrď len ak čísla sedia.
 - Kto získa fyzický prístup k odomknutému notebooku, získa aj konfiguráciu.

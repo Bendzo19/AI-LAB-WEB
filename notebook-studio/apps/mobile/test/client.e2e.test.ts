@@ -55,7 +55,7 @@ describe('NotebookClient (mobil) ↔ agent', () => {
     }, wsFactory);
 
     const pair = await client.pair(code, 'Test mobil');
-    expect(pair.sas).toMatch(/^\d{6}$/);
+    expect(pair.sas).toMatch(/^\d{8}$/);
     await client.connect();
 
     await waitFor(() => telemetry.length > 0, 15000);

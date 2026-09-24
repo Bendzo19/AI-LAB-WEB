@@ -5,11 +5,20 @@
  *   prehliadačoch aj v Node 22 cez WebCrypto).
  * - Spoločný kľúč: ECDH → HKDF-SHA-256 (salt = deviceId, info = "ns-e2e-v1")
  *   → AES-256-GCM.
- * - Overenie párovania: SAS (6 číslic z hashu oboch verejných kľúčov) sa
- *   zobrazí na notebooku aj v mobile. Ak sa zhodujú, relay nemohol podvrhnúť
- *   kľúče (útok „man in the middle“).
- * - AAD pri šifrovaní viaže správu na smer (napr. "phone>laptop"), takže
- *   relay nemôže správu presmerovať opačne.
+ * - Overenie párovania: SAS (8 číslic z hashu oboch verejných kľúčov) sa
+ *   zobrazí na notebooku aj v mobile. Zhodné číslo znamená, že obe strany
+ *   pracujú s rovnakou dvojicou kľúčov — chráni pred zámenou kľúčov PASÍVNYM
+ *   relayom aj pred prehodením kľúčov medzi paralelnými párovaniami.
+ *
+ *   OBMEDZENIE: samotný SAS bez „záväzku“ (commitment) plne nechráni pred
+ *   AKTÍVNE zlomyseľným relayom — ten je koncovým bodom oboch výmen kľúčov a
+ *   pri dostatočne krátkom SAS by vedel generovať náhradné kľúče, kým sa kódy
+ *   na oboch obrazovkách nezhodnú. Preto platí predpoklad, že relay je pod
+ *   kontrolou používateľa (self-hosted). Úplné riešenie (commit-reveal na
+ *   efemérnych kľúčoch, prípadne PAKE nad párovacím kódom) je plánované
+ *   spevnenie pred verejným vystavením relaya. Viď docs/SECURITY.md.
+ * - AAD pri šifrovaní viaže správu na smer (napr. "phone>laptop") a identitu
+ *   telefónu, takže relay nemôže správu presmerovať opačne ani medzi telefónmi.
  */
 
 const subtle = globalThis.crypto.subtle;
@@ -57,12 +66,14 @@ export async function deriveSessionKey(own: KeyPair, peerPublicRaw: string, devi
   );
 }
 
-/** Krátky overovací kód (6 číslic) — rovnaký na oboch zariadeniach. */
+/** Overovací kód (8 číslic) — rovnaký na oboch zariadeniach; porovná ho človek. */
 export async function sas(pubA: string, pubB: string): Promise<string> {
   const [x, y] = [pubA, pubB].sort();
-  const h = new Uint8Array(await subtle.digest('SHA-256', enc.encode(`${x}|${y}`)));
-  const n = ((h[0]! << 24) | (h[1]! << 16) | (h[2]! << 8) | h[3]!) >>> 0;
-  return String(n % 1_000_000).padStart(6, '0');
+  const h = new Uint8Array(await subtle.digest('SHA-256', enc.encode(`ns-sas-v1|${x}|${y}`)));
+  // 40 bitov z hashu → rovnomerné mapovanie na 8 číslic (10^8 < 2^40)
+  const lo = (((h[1]! << 24) | (h[2]! << 16) | (h[3]! << 8) | h[4]!) >>> 0);
+  const n = h[0]! * 2 ** 32 + lo;
+  return String(n % 100_000_000).padStart(8, '0');
 }
 
 export async function seal(key: CryptoKey, payload: unknown, aad: string): Promise<{ n: string; c: string }> {

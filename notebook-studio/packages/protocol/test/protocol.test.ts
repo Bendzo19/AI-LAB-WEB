@@ -48,6 +48,7 @@ describe('šifrovanie', () => {
     const k1 = await deriveSessionKey(laptop, phone.publicRaw, 'dev1');
     const k2 = await deriveSessionKey(phone, laptop.publicRaw, 'dev1');
     expect(await sas(laptop.publicRaw, phone.publicRaw)).toBe(await sas(phone.publicRaw, laptop.publicRaw));
+    expect(await sas(laptop.publicRaw, phone.publicRaw)).toMatch(/^\d{8}$/);
     const aad = aadFor('dev1', 'phone', 'laptop', 'p1');
     const box = await seal(k2, { hi: 'ahoj' }, aad);
     expect(await open(k1, box.n, box.c, aad)).toEqual({ hi: 'ahoj' });
