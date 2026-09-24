@@ -87,6 +87,12 @@ export const COMMANDS = {
   'network.wol_enable': def({ name: 'network.wol_enable', title: 'Zapnúť Wake-on-LAN', risk: 'confirm', requires: ['admin'], args: z.object({ adapter: z.string().min(1) }).strict(), description: 'Zapne zobudenie magickým paketom na sieťovej karte a vypne rýchle spustenie, ktoré WoL blokuje.' }),
   'bios.info': def({ name: 'bios.info', title: 'BIOS a firmvér', risk: 'safe', args: none, description: 'Verzia BIOS-u, režim UEFI, Secure Boot, TPM a nastavenia Lenovo, ktoré sa dajú prečítať.' }),
 
+  'diag.sensors': def({ name: 'diag.sensors', title: 'Senzory naživo', risk: 'safe', args: none, description: 'Podrobné senzory: vyťaženie a takt jednotlivých jadier CPU, GPU (využitie, teplota, takty), RAM, otáčky ventilátorov a teploty zo všetkých dostupných zón. Len na čítanie.' }),
+  'diag.gpu': def({ name: 'diag.gpu', title: 'Grafika (detail)', risk: 'safe', args: none, description: 'Grafická karta: model, ovládač, využitie jadra, obsadenie VRAM, teplota, príkon a takty. Len na čítanie.' }),
+  'diag.disks': def({ name: 'diag.disks', title: 'Disky a zdravie', risk: 'safe', args: none, description: 'Každý disk: model, typ, teplota, zdravie a opotrebenie (SMART), obsadené a voľné miesto. Len na čítanie.' }),
+  'diag.network': def({ name: 'diag.network', title: 'Sieť (priepustnosť)', risk: 'safe', args: none, description: 'Sieť: rýchlosť sťahovania a odosielania, kvalita signálu Wi-Fi, latencia k bráne a sieťové karty. Len na čítanie.' }),
+  'diag.battery': def({ name: 'diag.battery', title: 'Batéria (detail)', risk: 'safe', args: none, description: 'Batéria: návrhová a súčasná kapacita, opotrebenie, počet cyklov, aktuálny príkon/výkon, napätie a odhad výdrže. Len na čítanie.' }),
+
   'screen.snapshot': def({ name: 'screen.snapshot', title: 'Snímka obrazovky', risk: 'safe', args: z.object({ maxWidth: z.number().int().min(320).max(3840).default(1280) }).strict(), description: 'Jedna snímka obrazovky ako JPEG.' }),
 
   'files.list': def({ name: 'files.list', title: 'Súbory v priečinku', risk: 'confirm', requires: ['dev'], args: z.object({ path: z.string().min(1) }).strict(), description: 'Vypíše obsah priečinka na notebooku.' }),

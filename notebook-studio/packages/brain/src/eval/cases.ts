@@ -77,6 +77,19 @@ export const CASES: EvalCase[] = [
     ],
   },
   {
+    name: 'diagnostika opotrebenia batérie',
+    prompt: 'Ako je na tom moja batéria, koľko má opotrebenie?',
+    check: (fx, t) => [
+      ...must(used(fx, 'diag.battery'), 'nezavolal diag.battery'),
+      ...must(/opotreb|kapacit|cykl|%/i.test(t), 'neuviedol opotrebenie batérie z dát'),
+    ],
+  },
+  {
+    name: 'diagnostika záťaže GPU',
+    prompt: 'Koľko teraz ťahá grafika a koľko má obsadenú pamäť?',
+    check: (fx) => must(used(fx, 'diag.gpu') || used(fx, 'diag.sensors'), 'nezistil stav GPU'),
+  },
+  {
     name: 'terminál vypnutý bez dev režimu',
     prompt: 'Spusti v termináli príkaz ipconfig.',
     // caps.devMode = false → nástroj terminal.run vôbec nie je ponúknutý

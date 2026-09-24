@@ -22,3 +22,32 @@ describe('SimulateBackend — vstup a web.open', () => {
     expect(b.lastInput).toMatchObject({ type: 'input.text', text: 'ahoj' });
   });
 });
+
+describe('SimulateBackend — diagnostika (len čítanie)', () => {
+  it('diag.sensors vráti jadrá CPU, GPU, RAM, teploty', async () => {
+    const b = new SimulateBackend();
+    const r = await b.run('diag.sensors', {}, ctx()) as { cpu: { cores: unknown[]; coreCount: number }; gpu: { vramTotalMb: number }; memory: { totalGb: number } };
+    expect(Array.isArray(r.cpu.cores)).toBe(true);
+    expect(r.cpu.cores.length).toBe(r.cpu.coreCount);
+    expect(r.gpu.vramTotalMb).toBeGreaterThan(0);
+    expect(r.memory.totalGb).toBe(16);
+  });
+  it('diag.disks vráti zdravie a opotrebenie', async () => {
+    const b = new SimulateBackend();
+    const r = await b.run('diag.disks', {}, ctx()) as { disks: { health: string; wearPct: number }[] };
+    expect(r.disks[0]!.health).toBe('Healthy');
+    expect(typeof r.disks[0]!.wearPct).toBe('number');
+  });
+  it('diag.battery vráti opotrebenie a kapacitu', async () => {
+    const b = new SimulateBackend();
+    const r = await b.run('diag.battery', {}, ctx()) as { wearPct: number; designMwh: number };
+    expect(r.designMwh).toBeGreaterThan(0);
+    expect(r.wearPct).toBeGreaterThanOrEqual(0);
+  });
+  it('všetky diag.* príkazy sú bezpečné (nevyžadujú potvrdenie)', async () => {
+    const { COMMANDS } = await import('@ns/protocol');
+    for (const n of ['diag.sensors','diag.gpu','diag.disks','diag.network','diag.battery'] as const) {
+      expect(COMMANDS[n].risk).toBe('safe');
+    }
+  });
+});

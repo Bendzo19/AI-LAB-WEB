@@ -105,6 +105,11 @@ export class WindowsBackend implements Backend {
       case 'network.wol_status': return this.wolStatus(ctx);
       case 'network.wol_enable': this.requireAdmin(); await this.ps(`Enable-NetAdapterPowerManagement -Name ${psQuote(String(a.adapter))} -WakeOnMagicPacket; REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power" /v HiberbootEnabled /t REG_DWORD /d 0 /f`, ctx); return { adapter: a.adapter, armed: true };
       case 'bios.info': return this.biosInfo(ctx);
+      case 'diag.sensors': return this.diagSensors(ctx);
+      case 'diag.gpu': return this.diagGpu(ctx);
+      case 'diag.disks': return this.diagDisks(ctx);
+      case 'diag.network': return this.diagNetwork(ctx);
+      case 'diag.battery': return this.diagBattery(ctx);
 
       case 'screen.snapshot': return this.snapshot(Number(a.maxWidth ?? 1280), ctx);
 
@@ -150,6 +155,60 @@ export class WindowsBackend implements Backend {
   }
   private async biosInfo(ctx: ExecContext) {
     return this.json('$b=Get-CimInstance Win32_BIOS; $s=Confirm-SecureBootUEFI -EA SilentlyContinue; [pscustomobject]@{ version=$b.SMBIOSBIOSVersion; date=$b.ReleaseDate; secureBoot=$s; uefi=($env:firmware_type -eq "UEFI") }', ctx);
+  }
+  /** Podrobné senzory: jadrá CPU, GPU, RAM, ventilátory, teploty. Všetko cez čítanie, nič sa nemení. */
+  private async diagSensors(ctx: ExecContext): Promise<unknown> {
+    const [cores, cpu, mem, fans, temps, gpu] = await Promise.all([
+      this.json<unknown[]>(`Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor | Where-Object { $_.Name -ne '_Total' } | Sort-Object { [int]$_.Name } | Select-Object @{n='core';e={[int]$_.Name}},@{n='loadPct';e={[int]$_.PercentProcessorTime}}`, ctx).catch(() => []),
+      this.json<Record<string, unknown>>(`$p=Get-CimInstance Win32_Processor; [pscustomobject]@{ name=$p.Name; clockMhz=$p.CurrentClockSpeed; maxClockMhz=$p.MaxClockSpeed; cores=$p.NumberOfCores; threads=$p.NumberOfLogicalProcessors; loadPct=$p.LoadPercentage }`, ctx).catch(() => ({})),
+      this.json<Record<string, unknown>>(`$o=Get-CimInstance Win32_OperatingSystem; [pscustomobject]@{ freeGb=[math]::Round($o.FreePhysicalMemory/1MB,1); totalGb=[math]::Round($o.TotalVisibleMemorySize/1MB,1) }`, ctx).catch(() => ({})),
+      this.json<unknown>(`try { Get-CimInstance -Namespace root/WMI -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction Stop | Select-Object @{n='zone';e={$_.InstanceName}},@{n='tempC';e={[math]::Round(($_.CurrentTemperature/10)-273.15)}} } catch { @() }`, ctx).catch(() => []),
+      this.lenovoFans(ctx).catch(() => null),
+      this.nvidiaSmi(ctx).catch(() => null),
+    ]);
+    return { cpu: { ...cpu, cores }, memory: mem, fans, temps, gpu };
+  }
+  /** Otáčky ventilátorov cez Lenovo WMI, ak sú dostupné. */
+  private async lenovoFans(ctx: ExecContext): Promise<unknown> {
+    if (!this.lenovo || !this.wmiNamespace) return null;
+    const f1 = await this.ps(`(${this.lenovoMethod('Fan_Get_FullSpeed')}).Status`, ctx).then(s => s.trim()).catch(() => '');
+    const rpm = await this.ps(`(Get-CimInstance -Namespace ${this.wmiNamespace} -ClassName Lenovo_FanSpeed -ErrorAction SilentlyContinue | Select-Object -First 4).CurrentFanSpeed`, ctx).then(s => s.trim().split(/\s+/).map(Number).filter(n => !isNaN(n))).catch(() => []);
+    return { rpm, fullSpeed: f1 === '1' };
+  }
+  /** GPU cez nvidia-smi (ak je nainštalované ovládač NVIDIA). */
+  private async nvidiaSmi(ctx: ExecContext): Promise<unknown> {
+    const q = 'name,driver_version,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.gr,clocks.mem';
+    const out = await this.ps(`& nvidia-smi --query-gpu=${q} --format=csv,noheader,nounits`, ctx, 8000).catch(() => '');
+    const line = out.trim().split('\n')[0];
+    if (!line) return null;
+    const [name, driver, util, vramUsed, vramTotal, tempC, powerW, clockCore, clockMem] = line.split(',').map(x => x.trim());
+    return { name, driver, utilizationPct: num(util), vramUsedMb: num(vramUsed), vramTotalMb: num(vramTotal), tempC: num(tempC), powerW: num(powerW), clockCoreMhz: num(clockCore), clockMemMhz: num(clockMem) };
+  }
+  private async diagGpu(ctx: ExecContext): Promise<unknown> {
+    const nv = await this.nvidiaSmi(ctx).catch(() => null);
+    if (nv) return { source: 'nvidia-smi', ...(nv as object) };
+    // fallback: základné údaje z WMI (bez využitia/VRAM v reálnom čase)
+    const g = await this.json(`Get-CimInstance Win32_VideoController | Select-Object @{n='name';e={$_.Name}},@{n='driver';e={$_.DriverVersion}},@{n='vramMb';e={[math]::Round($_.AdapterRAM/1MB)}}`, ctx).catch(() => null);
+    return { source: 'wmi', adapters: g, note: 'Podrobné využitie a teplotu GPU dodá až ovládač (nvidia-smi).' };
+  }
+  private async diagDisks(ctx: ExecContext): Promise<unknown> {
+    const disks = await this.json(`Get-PhysicalDisk | ForEach-Object { $r=$_ | Get-StorageReliabilityCounter -ErrorAction SilentlyContinue; [pscustomobject]@{ name=$r.DeviceId; model=$_.FriendlyName; type=$_.MediaType; sizeGb=[math]::Round($_.Size/1GB); health=$_.HealthStatus; tempC=$r.Temperature; wearPct=$r.Wear; readErrors=$r.ReadErrorsTotal; powerOnHours=$r.PowerOnHours } }`, ctx).catch(() => null);
+    const volumes = await this.json(`Get-Volume | Where-Object { $_.DriveLetter } | Select-Object @{n='letter';e={$_.DriveLetter}},@{n='label';e={$_.FileSystemLabel}},@{n='usedGb';e={[math]::Round(($_.Size-$_.SizeRemaining)/1GB)}},@{n='totalGb';e={[math]::Round($_.Size/1GB)}}`, ctx).catch(() => null);
+    return { disks, volumes };
+  }
+  private async diagNetwork(ctx: ExecContext): Promise<unknown> {
+    const [adapters, wifi, gw] = await Promise.all([
+      this.json(`Get-NetAdapter -Physical | Where-Object Status -eq 'Up' | Select-Object @{n='name';e={$_.Name}},@{n='linkMbps';e={[math]::Round($_.LinkSpeed/1e6)}},@{n='mac';e={$_.MacAddress}}`, ctx).catch(() => null),
+      this.ps(`(netsh wlan show interfaces) 2>$null | Select-String 'Signal|SSID' | ForEach-Object { $_.ToString().Trim() }`, ctx).then(s => s.trim() || null).catch(() => null),
+      this.ps(`$g=(Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1).NextHop; if ($g) { (Test-Connection $g -Count 2 -ErrorAction SilentlyContinue | Measure-Object -Property ResponseTime -Average).Average }`, ctx).then(s => num(s.trim())).catch(() => null),
+    ]);
+    return { adapters, wifi, latencyToGatewayMs: gw };
+  }
+  private async diagBattery(ctx: ExecContext): Promise<unknown> {
+    const base = await this.json<Record<string, unknown>>(`$b=Get-CimInstance Win32_Battery; [pscustomobject]@{ percent=$b.EstimatedChargePercent; charging=($b.BatteryStatus -eq 2); estRuntimeMin=$b.EstimatedRunTime }`, ctx).catch(() => ({}));
+    const cap = await this.json<Record<string, unknown>>(`try { $f=(Get-CimInstance -Namespace root/WMI -ClassName BatteryFullChargedCapacity -ErrorAction Stop).FullChargedCapacity; $s=(Get-CimInstance -Namespace root/WMI -ClassName BatteryStaticData -ErrorAction Stop).DesignedCapacity; [pscustomobject]@{ fullChargeMwh=$f; designMwh=$s; wearPct=[math]::Round((1-($f/$s))*100,1) } } catch { [pscustomobject]@{} }`, ctx).catch(() => ({}));
+    const rate = await this.json<Record<string, unknown>>(`try { $r=(Get-CimInstance -Namespace root/WMI -ClassName BatteryStatus -ErrorAction Stop); [pscustomobject]@{ rateMw=$r.DischargeRate; voltageMv=$r.Voltage } } catch { [pscustomobject]@{} }`, ctx).catch(() => ({}));
+    return { ...base, ...cap, ...rate };
   }
   private async snapshot(maxWidth: number, ctx: ExecContext): Promise<{ jpeg: string; w: number; h: number }> {
     // SetProcessDPIAware: bez neho by sa na škálovanom displeji (125/150 %) zachytil len výrez
@@ -199,6 +258,7 @@ export class WindowsBackend implements Backend {
 
 const psQuote = (s: string) => "'" + s.replace(/'/g, "''") + "'";
 const bToGb = (bytes: string) => Math.round((Number(bytes) || 0) / 1e9 * 100) / 100;
+const num = (s: string | undefined) => { const n = Number(String(s ?? "").trim()); return isNaN(n) ? null : n; };
 const mapLenovoMode = (data: string): 'quiet' | 'balanced' | 'performance' | null => ({ '1': 'quiet', '2': 'balanced', '3': 'performance' } as const)[data] ?? null;
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));

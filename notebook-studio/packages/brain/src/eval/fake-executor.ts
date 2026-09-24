@@ -54,6 +54,12 @@ export class FakeExecutor {
       case 'network.wol_status': return { supported: false, reason: 'Rýchle spustenie Windows je zapnuté; BIOS voľbu WoL neponúka.' };
       case 'bios.info': return { version: 'M4CN35WW', uefi: true, secureBoot: true, tpm: '2.0' };
       case 'screen.snapshot': return { jpeg: '<base64>', w: 1280, h: 720 };
+      case 'diag.sensors': return { cpu: { loadPct: 6, coreCount: 14, cores: [{ core: 0, loadPct: 8 }] }, memory: { totalGb: 16 }, gpu: { utilizationPct: 2, vramUsedMb: 900, vramTotalMb: 8188, tempC: 41 }, temps: [{ zone: 'CPU', tempC: 47 }], fans: { rpm: [0, 0] } };
+      case 'diag.gpu': return { source: 'nvidia-smi', name: 'RTX 4060 Laptop', utilizationPct: 2, vramUsedMb: 900, vramTotalMb: 8188, tempC: 41 };
+      case 'diag.disks': return { disks: [{ model: 'BC901 512GB', type: 'SSD', health: 'Healthy', wearPct: 2, tempC: 41 }], volumes: [{ letter: 'C', usedGb: 318, totalGb: 476 }] };
+      case 'diag.network': return { adapters: [{ name: 'Wi-Fi', linkMbps: 1200 }], latencyToGatewayMs: 3 };
+      case 'diag.battery': return { percent: 86, charging: true, fullChargeMwh: 56400, designMwh: 60000, wearPct: 6, cycles: 112 };
+
       default: return { ok: true, command, args };
     }
   }
