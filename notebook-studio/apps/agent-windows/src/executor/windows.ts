@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import type { CommandArgs, CommandName } from '@ns/protocol';
 import { ExecError, type Backend, type ExecContext, type InputEvent } from './types.ts';
+import { buildHealthReport } from './health.ts';
 
 /**
  * Skutočný backend pre Windows 11. Väčšina vecí ide cez PowerShell a WMI/CIM.
@@ -110,6 +111,7 @@ export class WindowsBackend implements Backend {
       case 'diag.disks': return this.diagDisks(ctx);
       case 'diag.network': return this.diagNetwork(ctx);
       case 'diag.battery': return this.diagBattery(ctx);
+      case 'diag.report': return this.diagReport(ctx);
 
       case 'screen.snapshot': return this.snapshot(Number(a.maxWidth ?? 1280), ctx);
 
@@ -209,6 +211,16 @@ export class WindowsBackend implements Backend {
     const cap = await this.json<Record<string, unknown>>(`try { $f=(Get-CimInstance -Namespace root/WMI -ClassName BatteryFullChargedCapacity -ErrorAction Stop).FullChargedCapacity; $s=(Get-CimInstance -Namespace root/WMI -ClassName BatteryStaticData -ErrorAction Stop).DesignedCapacity; [pscustomobject]@{ fullChargeMwh=$f; designMwh=$s; wearPct=[math]::Round((1-($f/$s))*100,1) } } catch { [pscustomobject]@{} }`, ctx).catch(() => ({}));
     const rate = await this.json<Record<string, unknown>>(`try { $r=(Get-CimInstance -Namespace root/WMI -ClassName BatteryStatus -ErrorAction Stop); [pscustomobject]@{ rateMw=$r.DischargeRate; voltageMv=$r.Voltage } } catch { [pscustomobject]@{} }`, ctx).catch(() => ({}));
     return { ...base, ...cap, ...rate };
+  }
+  private async diagReport(ctx: ExecContext): Promise<unknown> {
+    const [bat, disksRes, sensors, sec, updates] = await Promise.all([
+      this.diagBattery(ctx).catch(() => ({})) as Promise<{ wearPct?: number | null; cycles?: number | null }>,
+      this.diagDisks(ctx).catch(() => ({})) as Promise<{ disks?: { model?: string; health?: string | null; wearPct?: number | null; tempC?: number | null }[] }>,
+      this.diagSensors(ctx).catch(() => ({})) as Promise<{ temps?: { zone?: string; tempC?: number | null }[]; gpu?: { tempC?: number | null } | null }>,
+      this.json<{ RealTimeProtectionEnabled?: boolean | null; sig?: number | null }>('$s=Get-MpComputerStatus; [pscustomobject]@{ RealTimeProtectionEnabled=$s.RealTimeProtectionEnabled; sig=$s.AntivirusSignatureAge }', ctx).catch(() => ({})),
+      this.ps('try { (New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher().Search("IsInstalled=0").Updates.Count } catch { "" }', ctx, 20_000).then(x => num(x)).catch(() => null),
+    ]);
+    return buildHealthReport({ bat, disks: disksRes.disks ?? [], sensors, sec, updates });
   }
   private async snapshot(maxWidth: number, ctx: ExecContext): Promise<{ jpeg: string; w: number; h: number }> {
     // SetProcessDPIAware: bez neho by sa na škálovanom displeji (125/150 %) zachytil len výrez

@@ -91,6 +91,7 @@ export const COMMANDS = {
   'diag.gpu': def({ name: 'diag.gpu', title: 'Grafika (detail)', risk: 'safe', args: none, description: 'Grafická karta: model, ovládač, využitie jadra, obsadenie VRAM, teplota, príkon a takty. Len na čítanie.' }),
   'diag.disks': def({ name: 'diag.disks', title: 'Disky a zdravie', risk: 'safe', args: none, description: 'Každý disk: model, typ, teplota, zdravie a opotrebenie (SMART), obsadené a voľné miesto. Len na čítanie.' }),
   'diag.network': def({ name: 'diag.network', title: 'Sieť (priepustnosť)', risk: 'safe', args: none, description: 'Sieť: rýchlosť sťahovania a odosielania, kvalita signálu Wi-Fi, latencia k bráne a sieťové karty. Len na čítanie.' }),
+  'diag.report': def({ name: 'diag.report', title: 'Správa o zdraví', risk: 'safe', args: none, description: 'Zhrnie zdravie notebooku do prehľadu: batéria, disk (SMART), teploty, ochrana a aktualizácie, s celkovým skóre a odporúčaniami. Len na čítanie.' }),
   'diag.battery': def({ name: 'diag.battery', title: 'Batéria (detail)', risk: 'safe', args: none, description: 'Batéria: návrhová a súčasná kapacita, opotrebenie, počet cyklov, aktuálny príkon/výkon, napätie a odhad výdrže. Len na čítanie.' }),
 
   'screen.snapshot': def({ name: 'screen.snapshot', title: 'Snímka obrazovky', risk: 'safe', args: z.object({ maxWidth: z.number().int().min(320).max(3840).default(1280) }).strict(), description: 'Jedna snímka obrazovky ako JPEG.' }),

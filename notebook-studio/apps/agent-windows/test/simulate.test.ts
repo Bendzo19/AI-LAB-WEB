@@ -46,8 +46,18 @@ describe('SimulateBackend — diagnostika (len čítanie)', () => {
   });
   it('všetky diag.* príkazy sú bezpečné (nevyžadujú potvrdenie)', async () => {
     const { COMMANDS } = await import('@ns/protocol');
-    for (const n of ['diag.sensors','diag.gpu','diag.disks','diag.network','diag.battery'] as const) {
+    for (const n of ['diag.sensors','diag.gpu','diag.disks','diag.network','diag.battery','diag.report'] as const) {
       expect(COMMANDS[n].risk).toBe('safe');
     }
   });
 });
+
+describe('SimulateBackend — správa o zdraví', () => {
+  it('diag.report vráti skóre, hodnotenie a nálezy', async () => {
+    const b = new SimulateBackend();
+    const r = await b.run('diag.report', {}, ctx()) as { score: number; rating: string; findings: unknown[] };
+    expect(typeof r.score).toBe('number');
+    expect(['výborné','dobré','zhoršené','zlé']).toContain(r.rating);
+    expect(Array.isArray(r.findings)).toBe(true);
+  });
+})

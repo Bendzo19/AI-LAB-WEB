@@ -1,5 +1,6 @@
 import type { CommandArgs, CommandName } from '@ns/protocol';
 import { ExecError, type Backend, type ExecContext, type InputEvent } from './types.ts';
+import { buildHealthReport } from './health.ts';
 import { SIM_SCREEN_H, SIM_SCREEN_JPEG, SIM_SCREEN_W } from './sim-screen.ts';
 
 /**
@@ -71,6 +72,7 @@ export class SimulateBackend implements Backend {
       case 'diag.disks': return { disks:[{ name:'0', model:'SK hynix BC901 512GB', type:'SSD', sizeGb:512, health:'Healthy', tempC:41, wearPct:2, readErrors:0, powerOnHours:1180 }], volumes:[{ letter:'C', label:'Windows', usedGb:318, totalGb:476 }] };
       case 'diag.network': return { adapters:[{ name:'Wi-Fi', linkMbps:1200, mac:'8c-16-45-aa-bb-cc' }], wifi:'SSID: Domov-5G\nSignal: 92%', latencyToGatewayMs:3 };
       case 'diag.battery': return { percent:86, charging:true, estRuntimeMin:null, fullChargeMwh:56400, designMwh:60000, wearPct:6, rateMw:this.load?-42000:12000, voltageMv:12600 };
+      case 'diag.report': return buildHealthReport({ bat:{ wearPct:6, cycles:112 }, disks:[{ model:'SK hynix BC901 512GB', health:'Healthy', wearPct:2, tempC:41 }], sensors:{ temps:[{ zone:'CPU', tempC:this.temp() }], gpu:{ tempC:this.temp()-6 } }, sec:{ RealTimeProtectionEnabled:true, sig:1 }, updates:2 });
       case 'power.wake': return { note: 'Zobúdzač pošle magický paket (simulácia).' };
       case 'power.lock': case 'power.sleep': case 'power.hibernate': return { done: true };
       case 'power.restart': case 'power.shutdown': return { scheduled: true, delaySec: a.delaySec ?? 0, note: 'Simulácia: notebook by sa teraz ' + (name === 'power.restart' ? 'reštartoval' : 'vypol') + '.' };

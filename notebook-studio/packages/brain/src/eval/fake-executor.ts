@@ -59,6 +59,7 @@ export class FakeExecutor {
       case 'diag.disks': return { disks: [{ model: 'BC901 512GB', type: 'SSD', health: 'Healthy', wearPct: 2, tempC: 41 }], volumes: [{ letter: 'C', usedGb: 318, totalGb: 476 }] };
       case 'diag.network': return { adapters: [{ name: 'Wi-Fi', linkMbps: 1200 }], latencyToGatewayMs: 3 };
       case 'diag.battery': return { percent: 86, charging: true, fullChargeMwh: 56400, designMwh: 60000, wearPct: 6, cycles: 112 };
+      case 'diag.report': return { score: 88, rating: 'výborné', findings: [{ area: 'Teploty', level: 'ok', message: 'Teploty v norme.' }, { area: 'Ventilátory', level: 'warn', message: 'Odporúčané čistenie.' }] };
 
       default: return { ok: true, command, args };
     }

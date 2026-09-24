@@ -77,6 +77,14 @@ export const CASES: EvalCase[] = [
     ],
   },
   {
+    name: 'súhrn zdravia notebooku',
+    prompt: 'Sprav mi celkovú kontrolu, ako je na tom notebook.',
+    check: (fx, t) => [
+      ...must(used(fx, 'diag.report') || used(fx, 'system.status'), 'nezískal súhrn zdravia'),
+      ...must(t.trim().length > 0, 'nedal zhrnutie'),
+    ],
+  },
+  {
     name: 'diagnostika opotrebenia batérie',
     prompt: 'Ako je na tom moja batéria, koľko má opotrebenie?',
     check: (fx, t) => [
