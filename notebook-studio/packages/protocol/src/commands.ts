@@ -70,6 +70,7 @@ export const COMMANDS = {
   'app.list': def({ name: 'app.list', title: 'Známe aplikácie', risk: 'safe', args: none, description: 'Aplikácie, ktoré agent vie spustiť (nastavené v konfigurácii notebooku).' }),
   'app.launch': def({ name: 'app.launch', title: 'Spustiť aplikáciu', risk: 'safe', args: z.object({ app: z.string().min(1) }).strict(), description: 'Spustí aplikáciu zo zoznamu app.list podľa názvu.' }),
   'app.close': def({ name: 'app.close', title: 'Zavrieť aplikáciu', risk: 'confirm', args: z.object({ app: z.string().min(1) }).strict(), description: 'Slušne zavrie aplikáciu (ako krížik). Program sa môže spýtať na uloženie.' }),
+  'web.open': def({ name: 'web.open', title: 'Otvoriť odkaz', risk: 'confirm', args: z.object({ url: z.string().url().max(2048) }).strict(), description: 'Otvorí adresu (http/https) v predvolenom prehliadači notebooku. Napr. video na YouTube.' }),
 
   'perf.get': def({ name: 'perf.get', title: 'Režim výkonu', risk: 'safe', requires: ['lenovo'], args: none, description: 'Aktuálny režim výkonu Lenovo (tichý, vyvážený, výkonný).' }),
   'perf.set_mode': def({ name: 'perf.set_mode', title: 'Nastaviť režim výkonu', risk: 'safe', requires: ['lenovo'], args: z.object({ mode: z.enum(['quiet', 'balanced', 'performance']) }).strict(), description: 'Prepne režim výkonu ako Fn+Q.' }),

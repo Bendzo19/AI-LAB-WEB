@@ -68,6 +68,13 @@ export const ScreenStart = z.object({ ...base, type: z.literal('screen.start'), 
 export const ScreenStop = z.object({ ...base, type: z.literal('screen.stop') });
 export const ScreenFrame = z.object({ ...base, type: z.literal('screen.frame'), seq: z.number().int(), w: z.number().int(), h: z.number().int(), jpeg: z.string() });
 
+// Živé ovládanie (myš/klávesnica) prejde len počas udeleného „control“ okna.
+// Mobil oň požiada; notebook ho jednorazovo povolí (potvrdenie u používateľa)
+// a kedykoľvek zastaví. Bez udelenia sa každý vstup zahodí.
+export const ControlRequest = z.object({ ...base, type: z.literal('control.request') });
+export const ControlRelease = z.object({ ...base, type: z.literal('control.release') });
+export const ControlState = z.object({ ...base, type: z.literal('control.state'), granted: z.boolean(), reason: z.string().optional() });
+
 export const InputPointer = z.object({ ...base, type: z.literal('input.pointer'), x: z.number().min(0).max(1), y: z.number().min(0).max(1), action: z.enum(['move', 'down', 'up', 'click', 'dblclick', 'scroll']), button: z.enum(['left', 'right', 'middle']).default('left'), dy: z.number().optional() });
 export const InputKey = z.object({ ...base, type: z.literal('input.key'), key: z.string().max(32), mods: z.array(z.enum(['ctrl', 'alt', 'shift', 'win'])).default([]) });
 export const InputText = z.object({ ...base, type: z.literal('input.text'), text: z.string().max(2000) });
@@ -75,7 +82,8 @@ export const InputText = z.object({ ...base, type: z.literal('input.text'), text
 export const AppMessage = z.discriminatedUnion('type', [
   Hello, Telemetry, Cmd, CmdConfirmRequired, CmdConfirm, CmdProgress, CmdResult,
   ChatUser, ChatDelta, ChatTool, ChatDone, ChatCancel,
-  ScreenStart, ScreenStop, ScreenFrame, InputPointer, InputKey, InputText,
+  ScreenStart, ScreenStop, ScreenFrame,
+  ControlRequest, ControlRelease, ControlState, InputPointer, InputKey, InputText,
 ]);
 export type AppMessage = z.infer<typeof AppMessage>;
 export type AppMessageOf<T extends AppMessage['type']> = Extract<AppMessage, { type: T }>;

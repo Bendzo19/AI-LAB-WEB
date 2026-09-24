@@ -91,6 +91,27 @@ describe('reťazec mobil ↔ relay ↔ agent', () => {
     expect(denied.ok).toBe(false);
     expect(denied.error?.code).toBe('denied_by_user');
 
+
+    // živé ovládanie: požiadame o control, v simulácii sa auto-povolí
+    await sendMsg(msg('control.request', {}));
+    await waitFor(async () => inbox.some(m => m.type === 'control.state' && m.granted === true));
+    // vstup počas povoleného okna prejde bez chyby (simulácia si ho len zaznamená)
+    await sendMsg(msg('input.pointer', { x: 0.5, y: 0.5, action: 'click', button: 'left' }));
+    await sendMsg(msg('input.text', { text: 'ahoj' }));
+    // web.open cez agenta (riziko confirm) — potvrdíme a čakáme výsledok
+    const web = msg('cmd', { name: 'web.open', args: { url: 'https://youtube.com' } });
+    await sendMsg(web);
+    await waitFor(async () => inbox.some(m => m.type === 'cmd.confirm_required' && (m as { title: string }).title.includes('Otvoriť')));
+    const wconf = [...inbox].reverse().find(m => m.type === 'cmd.confirm_required') as Extract<AppMessage, { type: 'cmd.confirm_required' }>;
+    await sendMsg(msg('cmd.confirm', { requestId: wconf.requestId, approved: true }));
+    await waitFor(async () => inbox.some(m => m.type === 'cmd.result' && m.requestId === web.id));
+    const wres = inbox.find(m => m.type === 'cmd.result' && m.requestId === web.id) as Extract<AppMessage, { type: 'cmd.result' }>;
+    expect(wres.ok).toBe(true);
+    expect((wres.data as { opened: string }).opened).toBe('https://youtube.com');
+    // ukončenie ovládania → notebook potvrdí granted:false
+    await sendMsg(msg('control.release', {}));
+    await waitFor(async () => inbox.some(m => m.type === 'control.state' && m.granted === false));
+
     ws.close();
   }, 40000);
 });

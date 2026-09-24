@@ -69,7 +69,7 @@ príkazy vrátia `not_supported` — nič sa nepokazí.
 Mobilná aplikácia je webová (PWA), pridáš si ju na plochu. Pri prvom spustení:
 
 1. Zadaj **párovací kód** z notebooku.
-2. Na notebooku sa objaví **overovací kód (SAS)** — 6 číslic. Skontroluj, že sa
+2. Na notebooku sa objaví **overovací kód (SAS)** — 8 číslic. Skontroluj, že sa
    zhoduje s číslom v mobile, a potvrď na notebooku.
 3. Hotovo, mobil je spárovaný a šifrovane spojený.
 
@@ -92,6 +92,25 @@ V **BIOS-e** a vo vlastnostiach sieťovej karty zapni Wake-on-LAN a vypni rýchl
 spustenie Windows (`powercfg /hibernate off` + HiberbootEnabled = 0). Príkaz
 `network.wol_enable` to spraví za teba (potrebuje admin). Zapnutie z úplného
 vypnutia však závisí od podpory v BIOS-e; zo spánku a hibernácie je spoľahlivejšie.
+
+## 4b. Živé ovládanie obrazovky (myš, klávesnica, agent)
+
+V sekcii **Ovládanie** vieš otvoriť **živý obraz** plochy notebooku (plynulé
+snímky, nie jednorazový screenshot) a ovládať ho z mobilu:
+
+- **Živý obraz** — mobil požiada `screen.start`, notebook posiela snímky ako
+  JPEG (predvolene 4 s⁻¹, dá sa zvýšiť). Ide o tie isté snímky ako `screen.snapshot`.
+- **Živé ovládanie (myš/klávesnica)** sa zapne až po **jednom výslovnom
+  potvrdení priamo na notebooku** („Povoliť živé ovládanie?“). Bez neho sa každý
+  vstup zahodí. Okno sa dá kedykoľvek ukončiť z mobilu (`control.release`) aj sám
+  vyprší (predvolene po 15 min) a pri odpojení sa zruší. Notebook zobrazí
+  upozornenie, keď mobil o ovládanie žiada.
+- **Agent** — v sekcii Agent zadáš úlohu (napr. „otvor YouTube a pusti video“).
+  Agent na notebooku ju vykoná pomocou príkazov z katalógu, vrátane nového
+  `web.open` (otvorí http/https adresu v prehliadači).
+
+Aby ovládanie fungovalo, agent musí bežať v **relácii prihláseného používateľa**
+(nie ako služba v relácii 0) — inak nevidí obrazovku ani neposiela vstup.
 
 ## 5. Trénovanie a rozširovanie
 

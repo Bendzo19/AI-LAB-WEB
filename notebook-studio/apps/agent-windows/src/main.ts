@@ -12,6 +12,8 @@ import { Runner, type ConfirmFn } from './runner.ts';
 import { PhoneSession } from './session.ts';
 
 const SIMULATE = process.argv.includes('--simulate') || process.platform !== 'win32';
+/** Ako dlho platí povolené živé ovládanie, kým sa samo ukončí. */
+const CONTROL_GRANT_MS = 15 * 60_000;
 
 interface Pending { resolve: (ok: boolean) => void; timer: ReturnType<typeof setTimeout> }
 /** Všetko, čo agent drží pre jeden spárovaný telefón. */
@@ -21,7 +23,11 @@ interface PhonePeer {
   brain: Brain | null;
   chats: Map<string, AbortController>;   // podľa convId
   screen: ReturnType<typeof setInterval> | null;
+  control: ControlGrant;                 // živé ovládanie: povolené len po potvrdení na notebooku
 }
+
+/** Stav udeleného control okna pre jeden telefón. */
+interface ControlGrant { granted: boolean; pending: boolean; timer: ReturnType<typeof setTimeout> | null; }
 
 class LaptopAgent {
   private ws: WebSocket | null = null;
@@ -81,7 +87,7 @@ class LaptopAgent {
   private cleanupConnection() {
     this.stopTelemetry();
     if (this.heartbeat) { clearInterval(this.heartbeat); this.heartbeat = null; }
-    for (const phoneId of this.peers.keys()) this.stopScreen(phoneId);
+    for (const [phoneId, peer] of this.peers) { this.stopScreen(phoneId); if (peer.control.timer) clearTimeout(peer.control.timer); peer.control.timer = null; peer.control.granted = false; peer.control.pending = false; }
     this.greeted.clear();
   }
 
@@ -167,7 +173,7 @@ class LaptopAgent {
     const brain = this.cfg.anthropicApiKey
       ? new Brain(this.caps(), (call, signal) => runner.run(call.command, call.args, 'agent', { signal }), { apiKey: this.cfg.anthropicApiKey, baseURL: this.cfg.anthropicBaseUrl })
       : null;
-    this.peers.set(p.phoneId, { session, runner, brain, chats: new Map(), screen: null });
+    this.peers.set(p.phoneId, { session, runner, brain, chats: new Map(), screen: null, control: { granted: false, pending: false, timer: null } });
   }
 
   /** Obnoví spárované telefóny z konfigurácie (po štarte, pred pripojením). */
@@ -202,7 +208,9 @@ class LaptopAgent {
       case 'chat.cancel': { peer.chats.get(m.convId)?.abort(); return; }
       case 'screen.start': return this.startScreen(peer, phoneId, m);
       case 'screen.stop': return this.stopScreen(phoneId);
-      case 'input.pointer': case 'input.key': case 'input.text': return; // vzdialený vstup pridá Windows backend v ďalšej verzii
+      case 'control.request': { void this.handleControlRequest(peer, phoneId); return; }
+      case 'control.release': return this.releaseControl(peer, phoneId, 'Ovládanie ukončené z mobilu.');
+      case 'input.pointer': case 'input.key': case 'input.text': return this.handleInput(peer, phoneId, m);
       default: return;
     }
   }
@@ -253,6 +261,54 @@ class LaptopAgent {
     peer.screen = setInterval(grab, period);
   }
   private stopScreen(phoneId: string) { const peer = this.peers.get(phoneId); if (peer?.screen) { clearInterval(peer.screen); peer.screen = null; } }
+
+  /** Živé ovládanie sa povolí len po jednom výslovnom potvrdení na notebooku.
+   * Bez neho žiadna myš ani klávesa neprejde. Okno sa samo zavrie po čase. */
+  private async handleControlRequest(peer: PhonePeer, phoneId: string) {
+    if (peer.control.granted) { await this.sendControlState(phoneId, true); return; }
+    if (peer.control.pending) return;                         // čaká sa na potvrdenie, druhú výzvu neotváraj
+    if (!this.backend.input) { await this.sendControlState(phoneId, false, 'Tento notebook zatiaľ nevie prijímať vzdialený vstup.'); return; }
+    peer.control.pending = true;
+    const name = this.cfg.phones.find(p => p.phoneId === phoneId)?.phoneName ?? 'mobil';
+    void this.backend.run('notify.show', { title: 'Notebook Studio', text: `„${name}“ žiada živé ovládanie (myš a klávesnica).` }, { signal: new AbortController().signal }).catch(() => {});
+    const ok = await this.askDevice(`\n[ovládanie] „${name}“ žiada živé ovládanie (myš + klávesnica). Povoliť? [a/N] `);
+    peer.control.pending = false;
+    if (!this.peers.get(phoneId)) return;                     // telefón sa medzitým odpojil
+    if (!ok) { console.log('[ovládanie] zamietnuté'); await this.sendControlState(phoneId, false, 'Ovládanie zamietnuté na notebooku.'); return; }
+    peer.control.granted = true;
+    if (peer.control.timer) clearTimeout(peer.control.timer);
+    peer.control.timer = setTimeout(() => this.releaseControl(peer, phoneId, 'Ovládanie sa po čase automaticky ukončilo.'), CONTROL_GRANT_MS);
+    console.log(`[ovládanie] „${name}“ povolené (max ${Math.round(CONTROL_GRANT_MS / 60000)} min).`);
+    await this.sendControlState(phoneId, true);
+  }
+
+  private releaseControl(peer: PhonePeer, phoneId: string, reason?: string) {
+    if (peer.control.timer) { clearTimeout(peer.control.timer); peer.control.timer = null; }
+    const was = peer.control.granted;
+    peer.control.granted = false;
+    if (was) console.log(`[ovládanie] ukončené (${phoneId}).`);
+    void this.sendControlState(phoneId, false, reason);
+  }
+
+  private async handleInput(peer: PhonePeer, phoneId: string, m: Extract<AppMessage, { type: 'input.pointer' | 'input.key' | 'input.text' }>) {
+    if (!peer.control.granted || !this.backend.input) { await this.sendControlState(phoneId, false, 'Vstup zahodený: ovládanie nie je povolené.'); return; }
+    try { await this.backend.input(m, { signal: new AbortController().signal }); }
+    catch { /* jednu neúspešnú udalosť vstupu ticho zahodíme */ }
+  }
+
+  private async sendControlState(phoneId: string, granted: boolean, reason?: string) {
+    await this.sendTo(phoneId, msg('control.state', { granted, reason }));
+  }
+
+  /** Otázka na notebooku (áno/nie). V simulácii a bez terminálu automaticky povolí,
+   * aby sa dalo testovať a ukázať ukážkový režim. */
+  private async askDevice(question: string): Promise<boolean> {
+    if (SIMULATE || !process.stdin.isTTY) return true;
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const ans = (await rl.question(question)).trim().toLowerCase();
+    rl.close();
+    return ans === 'a' || ans === 'y';
+  }
 
   private startTelemetry() {
     this.stopTelemetry();

@@ -1,5 +1,5 @@
 import type { CommandArgs, CommandName } from '@ns/protocol';
-import { ExecError, type Backend, type ExecContext } from './types.ts';
+import { ExecError, type Backend, type ExecContext, type InputEvent } from './types.ts';
 import { SIM_SCREEN_H, SIM_SCREEN_JPEG, SIM_SCREEN_W } from './sim-screen.ts';
 
 /**
@@ -17,6 +17,8 @@ export class SimulateBackend implements Backend {
   private brightness = 70;
   private volume = 45;
   private running = new Set(['Chrome', 'Code', 'Discord', 'Steam', 'Spotify']);
+  lastUrl: string | null = null;
+  lastInput: InputEvent | null = null;
   private space = { temp: 2.4, recycle_bin: 1.1, browser_cache: 0.86, windows_update: 3.2, thumbnails: 0.21, logs: 0.38 };
 
   constructor(opts: { lenovo?: boolean } = {}) { this.lenovo = opts.lenovo ?? true; }
@@ -51,6 +53,7 @@ export class SimulateBackend implements Backend {
       case 'app.list': return { apps: [...this.running, 'Notepad'] };
       case 'app.launch': { const app = String(a.app); if (/game|hra/i.test(app)) this.load = true; this.running.add(app); return { launched: app }; }
       case 'app.close': { const app = String(a.app); if (/game|hra/i.test(app)) this.load = false; this.running.delete(app); return { closed: app }; }
+      case 'web.open': { const u = String(a.url); this.lastUrl = u; return { opened: u, note: 'Simulácia: adresa by sa otvorila v prehliadači.' }; }
       case 'perf.get': return { mode: this.mode };
       case 'perf.set_mode': this.mode = a.mode as typeof this.mode; return { mode: this.mode };
       case 'battery.set_conservation': return { conservation: a.enabled };
@@ -74,6 +77,11 @@ export class SimulateBackend implements Backend {
       case 'terminal.run': return { output: `> ${String(a.command)}\n(simulácia: príkaz sa nevykonal)`, note: 'Simulovaný terminál.' };
       default: throw new ExecError('not_supported', `Príkaz ${name} nie je v simulácii podporovaný.`);
     }
+  }
+
+  async input(ev: InputEvent, _ctx: ExecContext): Promise<void> {
+    // simulácia: vstup sa nikam nepošle, len sa zaznamená posledná udalosť
+    this.lastInput = ev;
   }
 
   private async tick(ctx: ExecContext, steps: number) {

@@ -20,6 +20,7 @@ export interface ClientEvents {
   onChatTool?: (convId: string, callId: string, command: string, label: string, status: string) => void;
   onChatDone?: (convId: string, text: string, error?: string) => void;
   onScreenFrame?: (jpeg: string, w: number, h: number) => void;
+  onControlState?: (granted: boolean, reason?: string) => void;
   onWakeResult?: (ok: boolean, error?: string) => void;
   onStatus?: (status: 'connecting' | 'online' | 'offline' | 'revoked') => void;
 }
@@ -114,6 +115,7 @@ export class NotebookClient {
       case 'chat.tool': return this.ev.onChatTool?.(m.convId, m.callId, m.command, m.label, m.status);
       case 'chat.done': return this.ev.onChatDone?.(m.convId, m.text, m.error);
       case 'screen.frame': return this.ev.onScreenFrame?.(m.jpeg, m.w, m.h);
+      case 'control.state': return this.ev.onControlState?.(m.granted, m.reason);
       default: return;
     }
   }
@@ -141,6 +143,18 @@ export class NotebookClient {
   async startScreen(opts: { fps?: number; maxWidth?: number } = {}) { await this.sealSend(msg('screen.start', { fps: opts.fps ?? 4, quality: 60, maxWidth: opts.maxWidth ?? 1280, display: 0 })); }
   async stopScreen() { await this.sealSend(msg('screen.stop', {})); }
 
+  /** Živé ovládanie: požiada notebook o povolenie (potvrdí ho používateľ na notebooku). */
+  async requestControl() { await this.sealSend(msg('control.request', {})); }
+  async releaseControl() { await this.sealSend(msg('control.release', {})); }
+  /** Myš: súradnice sú 0..1 v rámci obrazu. Prejde len počas povoleného ovládania. */
+  async sendPointer(x: number, y: number, action: 'move' | 'down' | 'up' | 'click' | 'dblclick' | 'scroll', button: 'left' | 'right' | 'middle' = 'left', dy?: number) {
+    await this.sealSend(msg('input.pointer', { x: clamp01(x), y: clamp01(y), action, button, dy }));
+  }
+  async sendKey(key: string, mods: ('ctrl' | 'alt' | 'shift' | 'win')[] = []) { await this.sealSend(msg('input.key', { key, mods })); }
+  async sendText(text: string) { if (text) await this.sealSend(msg('input.text', { text: text.slice(0, 2000) })); }
+
   /** Požiadať zobúdzač o zapnutie notebooku (ctl mimo e2e). */
   async wake() { if (this.ws?.readyState === OPEN) this.ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'ctl', op: 'wake', body: {} } satisfies CtlFrame)); }
 }
+
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n));

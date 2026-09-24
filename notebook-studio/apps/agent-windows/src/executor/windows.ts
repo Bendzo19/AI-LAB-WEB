@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import type { CommandArgs, CommandName } from '@ns/protocol';
-import { ExecError, type Backend, type ExecContext } from './types.ts';
+import { ExecError, type Backend, type ExecContext, type InputEvent } from './types.ts';
 
 /**
  * Skutočný backend pre Windows 11. Väčšina vecí ide cez PowerShell a WMI/CIM.
@@ -80,6 +80,7 @@ export class WindowsBackend implements Backend {
       case 'app.list': return { apps: Object.keys(this.known) };
       case 'app.launch': { const path = this.known[String(a.app)]; if (!path) throw new ExecError('not_supported', `Aplikácia „${a.app}“ nie je v zozname povolených.`); await this.ps(`Start-Process -FilePath ${psQuote(path)}`, ctx); return { launched: a.app }; }
       case 'app.close': await this.ps(`Get-Process -Name ${psQuote(String(a.app))} -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null }; $true`, ctx); return { closed: a.app };
+      case 'web.open': { const u = String(a.url); if (!/^https?:\/\//i.test(u)) throw new ExecError('invalid_args', 'Otvoriť sa dá len http alebo https adresa.'); await this.ps(`Start-Process ${psQuote(u)}`, ctx); return { opened: u }; }
 
       case 'power.lock': await this.ps('rundll32.exe user32.dll,LockWorkStation', ctx); return { done: true };
       case 'power.sleep': await this.ps('Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState("Suspend",$false,$false)', ctx); return { done: true };
@@ -157,8 +158,65 @@ export class WindowsBackend implements Backend {
     if (!r || !r.jpeg) throw new ExecError('failed', 'Snímku obrazovky sa nepodarilo vytvoriť.');
     return r;
   }
+  /**
+   * Vzdialený vstup na obrazovku notebooku (myš, klávesnica). Rovnaký mechanizmus
+   * ako pri diaľkovej ploche (AnyDesk/RDP): SetCursorPos + mouse_event pre myš,
+   * SendKeys/keybd_event pre klávesy. Beží len počas control okna, ktoré povolí
+   * používateľ na notebooku (rozhoduje main.ts). Súradnice sú 0..1 cez celú
+   * virtuálnu plochu, takže sedia aj pri viacerých monitoroch a škálovaní.
+   */
+  async input(ev: InputEvent, ctx: ExecContext): Promise<void> {
+    if (ev.type === 'input.pointer') {
+      const abs = `$v=[System.Windows.Forms.SystemInformation]::VirtualScreen; $px=[int]($v.Left+${clamp01(ev.x)}*$v.Width); $py=[int]($v.Top+${clamp01(ev.y)}*$v.Height); [NsInput]::SetCursorPos($px,$py)|Out-Null;`;
+      const M = { leftDown: 0x02, leftUp: 0x04, rightDown: 0x08, rightUp: 0x10, midDown: 0x20, midUp: 0x40, wheel: 0x0800 };
+      const b = ev.button === 'right' ? { d: M.rightDown, u: M.rightUp } : ev.button === 'middle' ? { d: M.midDown, u: M.midUp } : { d: M.leftDown, u: M.leftUp };
+      let act = '';
+      if (ev.action === 'down') act = `[NsInput]::mouse_event(${b.d},0,0,0,[IntPtr]::Zero);`;
+      else if (ev.action === 'up') act = `[NsInput]::mouse_event(${b.u},0,0,0,[IntPtr]::Zero);`;
+      else if (ev.action === 'click') act = `[NsInput]::mouse_event(${b.d},0,0,0,[IntPtr]::Zero);[NsInput]::mouse_event(${b.u},0,0,0,[IntPtr]::Zero);`;
+      else if (ev.action === 'dblclick') act = `[NsInput]::mouse_event(${b.d},0,0,0,[IntPtr]::Zero);[NsInput]::mouse_event(${b.u},0,0,0,[IntPtr]::Zero);[NsInput]::mouse_event(${b.d},0,0,0,[IntPtr]::Zero);[NsInput]::mouse_event(${b.u},0,0,0,[IntPtr]::Zero);`;
+      else if (ev.action === 'scroll') { const d = Math.max(-30, Math.min(30, Math.round(ev.dy ?? 0))) * -4; act = `[NsInput]::mouse_event(${M.wheel},0,0,[uint32]${d >>> 0},[IntPtr]::Zero);`; }
+      await this.ps(INPUT_PREAMBLE + abs + act, ctx, 8_000);
+      return;
+    }
+    if (ev.type === 'input.text') {
+      if (!ev.text) return;
+      await this.ps(`Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(${psQuote(escapeSendKeys(ev.text))})`, ctx, 8_000);
+      return;
+    }
+    // input.key: podrž modifikátory, stlač hlavnú klávesu, pusti.
+    const mod: Record<string, number> = { ctrl: 0x11, alt: 0x12, shift: 0x10, win: 0x5B };
+    const vk = keyToVk(ev.key);
+    if (vk == null) return;                              // neznámu klávesu radšej zahodíme
+    const KEYUP = 0x02;
+    const downs = ev.mods.map(m => `[NsInput]::keybd_event([byte]${mod[m]},0,0,[IntPtr]::Zero);`).join('');
+    const ups = [...ev.mods].reverse().map(m => `[NsInput]::keybd_event([byte]${mod[m]},0,${KEYUP},[IntPtr]::Zero);`).join('');
+    const press = `[NsInput]::keybd_event([byte]${vk},0,0,[IntPtr]::Zero);[NsInput]::keybd_event([byte]${vk},0,${KEYUP},[IntPtr]::Zero);`;
+    await this.ps(INPUT_PREAMBLE + downs + press + ups, ctx, 8_000);
+  }
+
 }
 
 const psQuote = (s: string) => "'" + s.replace(/'/g, "''") + "'";
 const bToGb = (bytes: string) => Math.round((Number(bytes) || 0) / 1e9 * 100) / 100;
 const mapLenovoMode = (data: string): 'quiet' | 'balanced' | 'performance' | null => ({ '1': 'quiet', '2': 'balanced', '3': 'performance' } as const)[data] ?? null;
+
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+/** Escapovanie špeciálnych znakov SendKeys ({}()+^%~[]). */
+const escapeSendKeys = (t: string) => t.slice(0, 2000).replace(/[+^%~(){}\[\]]/g, m => '{' + m + '}');
+/** Add-Type s P/Invoke pre myš/klávesnicu + DPI awareness. Vloží sa pred každý vstup. */
+const INPUT_PREAMBLE = `Add-Type -AssemblyName System.Windows.Forms; Add-Type 'using System;using System.Runtime.InteropServices;public class NsInput{[DllImport("user32.dll")]public static extern bool SetProcessDPIAware();[DllImport("user32.dll")]public static extern bool SetCursorPos(int x,int y);[DllImport("user32.dll")]public static extern void mouse_event(uint f,uint dx,uint dy,uint data,IntPtr e);[DllImport("user32.dll")]public static extern void keybd_event(byte vk,byte scan,uint f,IntPtr e);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern short VkKeyScan(char ch);}' -ErrorAction SilentlyContinue; [NsInput]::SetProcessDPIAware()|Out-Null; `;
+/** Názov klávesy → Windows virtual-key kód. Jeden znak sa preloží cez VkKeyScan pri behu. */
+function keyToVk(key: string): number | null {
+  const named: Record<string, number> = {
+    enter: 0x0D, tab: 0x09, escape: 0x1B, esc: 0x1B, backspace: 0x08, delete: 0x2E, space: 0x20,
+    up: 0x26, down: 0x28, left: 0x25, right: 0x27, home: 0x24, end: 0x23, pageup: 0x21, pagedown: 0x22,
+    insert: 0x2D, f1: 0x70, f2: 0x71, f3: 0x72, f4: 0x73, f5: 0x74, f6: 0x75, f7: 0x76, f8: 0x77, f9: 0x78, f10: 0x79, f11: 0x7A, f12: 0x7B,
+  };
+  const k = key.toLowerCase();
+  const hit = named[k];
+  if (hit !== undefined) return hit;
+  if (key.length === 1) { const c = key.toUpperCase().charCodeAt(0); if (c >= 0x30 && c <= 0x5A) return c; }
+  return null;
+}
+

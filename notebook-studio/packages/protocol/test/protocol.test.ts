@@ -33,6 +33,21 @@ describe('správy', () => {
     const m = msg('cmd', { name: 'system.status', args: {} });
     expect(AppMessage.parse(m).type).toBe('cmd');
   });
+  it('validuje živé ovládanie a vstup', () => {
+    expect(AppMessage.parse(msg('control.request', {})).type).toBe('control.request');
+    expect(AppMessage.parse(msg('control.state', { granted: true })).type).toBe('control.state');
+    expect(AppMessage.parse(msg('input.pointer', { x: 0.5, y: 0.5, action: 'click', button: 'left' })).type).toBe('input.pointer');
+    expect(AppMessage.parse(msg('input.key', { key: 'Enter', mods: ['ctrl'] })).type).toBe('input.key');
+    expect(AppMessage.parse(msg('input.text', { text: 'ahoj' })).type).toBe('input.text');
+    // súradnice mimo rozsahu a priveľký text sa odmietnu
+    expect(AppMessage.safeParse({ ...msg('input.pointer', { x: 2, y: 0, action: 'move', button: 'left' }) }).success).toBe(false);
+    expect(AppMessage.safeParse({ ...msg('input.text', { text: 'x'.repeat(2001) }) }).success).toBe(false);
+  });
+  it('web.open je príkaz s potvrdením a berie len platnú URL', () => {
+    expect(COMMANDS['web.open'].risk).toBe('confirm');
+    expect(parseArgs('web.open', { url: 'https://youtube.com' }).url).toBe('https://youtube.com');
+    expect(() => parseArgs('web.open', { url: 'nie-url' })).toThrow();
+  });
   it('ReplayGuard odmietne opakovanie a staré správy', () => {
     const g = new ReplayGuard(1000);
     expect(g.accept('a', 1000, 1000)).toBe(true);
