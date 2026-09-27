@@ -1,0 +1,4 @@
+# Python packages for the data scripts (FastF1 export, lap comparison, track building).
+fastf1>=3.4
+numpy
+matplotlib

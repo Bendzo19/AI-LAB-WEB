@@ -123,6 +123,12 @@ priečinka `telemetry/`.
 
 ---
 
+## Pokračovanie na vlastnom PC
+
+`build.bat` (zostaví a otestuje), `run.bat` (spustí), návod na lokálny
+vývoj aj s Claude Code, Blenderom a Unrealom: [docs/LOKALNE_SK.md](docs/LOKALNE_SK.md).
+Kontext projektu pre Claude Code je v `CLAUDE.md`.
+
 ## Zostavenie zo zdrojákov
 
 Potrebuješ CMake ≥ 3.20 a C++17 kompilátor. SDL3 sa stiahne automaticky.
