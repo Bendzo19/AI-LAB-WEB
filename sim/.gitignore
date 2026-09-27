@@ -8,3 +8,6 @@ dist/
 *.blend1
 private/
 ac_laps/
+
+# The simulator keeps its Claude Code guide in the repo (the web project ignores its own).
+!CLAUDE.md
