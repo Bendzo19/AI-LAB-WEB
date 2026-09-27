@@ -484,7 +484,10 @@ int main(int argc, char** argv) {
                 else if ((k == SDLK_ESCAPE && !showHelp) || k == SDLK_P) sh.push(Cmd::TogglePause);
                 else if (k == SDLK_F1) showHelp = !showHelp;
                 else if (k == SDLK_ESCAPE && showHelp) showHelp = false;
-                else if (k == SDLK_F2) showSetup = true;
+                else if (k == SDLK_F2) {
+                    showSetup = true;
+                    if (!paused) sh.push(Cmd::TogglePause);  // do not drive while configuring
+                }
                 else if (k == SDLK_F3) sidebarPinned = !sidebarPinned;
                 else if (k == SDLK_V) changeSettings([](Settings& s) {
                     const int n = static_cast<int>(CameraMode::Count);
