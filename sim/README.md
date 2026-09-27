@@ -177,7 +177,16 @@ Autá 2025 a 2026 majú 3D model vytvorený v Blenderi skriptom
 `scripts/blender/build_car.py` (parametrický: rázvor, rozchod, šírka,
 pneumatiky – presne podľa fyziky, takže sedí kokpit aj kamery). Vzniknú
 súbory `data/models/f1_20xx_body.glb`, `…_wheel_front.glb`,
-`…_wheel_rear.glb` a upraviteľná scéna `art/blender/f1_20xx.blend`.
+`…_wheel_rear.glb`, `steering_wheel.glb` (volant s displejom, tlačidlami
+a LED, otáča sa s tvojím volantom) a upraviteľná scéna
+`art/blender/f1_20xx.blend`. Tvar vychádza z moderných ground-effect áut
+(downwash sidepody, podrezanie, venturi podlaha s doskou, lyžicové zadné
+krídlo s DRS, beam wing, difúzor); reálne logá tímov a sponzorov model
+zámerne neobsahuje.
+
+Renderer: tiene od slnka (2 kaskády), fyzikálne materiály (kov/drsnosť,
+odrazy oblohy), obloha s mrakmi, tone mapping, svietiace LED/dažďové svetlo,
+terén z rovnakých výškových dát ako fyzika.
 
 - V Blenderi: otvor `art/blender/f1_2025.blend`, uprav a exportuj
   (File → Export → glTF 2.0, formát GLB, „+Y Up“) karosériu bez kolies do

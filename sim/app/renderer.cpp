@@ -26,7 +26,46 @@ const char* cameraName(CameraMode m) {
 
 namespace {
 
-const char* kLitVs = R"(#version 330 core
+// Shared GLSL: sky model (linear HDR), ACES tone mapping, noise.
+const char* kCommonGlsl = R"(
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
+}
+float fbm(vec2 p) {
+    float s = 0.0, a = 0.5;
+    for (int i = 0; i < 5; ++i) { s += a * noise(p); p = p * 2.03 + vec2(17.1, 9.2); a *= 0.5; }
+    return s;
+}
+// Linear HDR sky radiance in direction d (z up). clouds = 0 for blurry reflections.
+vec3 skyColor(vec3 d, vec3 sunDir, float clouds) {
+    float t = clamp(d.z, -1.0, 1.0);
+    vec3 zenith = vec3(0.10, 0.25, 0.62);
+    vec3 horizon = vec3(0.62, 0.74, 0.92);
+    vec3 col = mix(horizon, zenith, pow(max(t, 0.0), 0.45));
+    // Below the horizon: hazy ground bounce.
+    col = mix(col, vec3(0.28, 0.30, 0.30), smoothstep(0.0, -0.25, t));
+    float sd = max(dot(d, sunDir), 0.0);
+    col += vec3(1.0, 0.85, 0.6) * (pow(sd, 8.0) * 0.25 + pow(sd, 64.0) * 0.4);
+    if (clouds > 0.0 && t > 0.01) {
+        vec2 uv = d.xy / (t + 0.08) * 1.6;
+        float c = smoothstep(0.52, 0.78, fbm(uv + vec2(3.0, 1.0)));
+        vec3 cloudCol = mix(vec3(0.95, 0.96, 1.0), vec3(0.62, 0.65, 0.72), smoothstep(0.6, 1.0, fbm(uv * 1.7)));
+        cloudCol += vec3(1.0, 0.9, 0.75) * pow(sd, 6.0) * 0.5;
+        col = mix(col, cloudCol * 1.1, c * clouds * smoothstep(0.01, 0.15, t));
+    }
+    return col;
+}
+vec3 aces(vec3 x) {
+    x *= 0.8;
+    return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
+}
+vec3 toDisplay(vec3 linear) { return pow(aces(linear), vec3(1.0 / 2.2)); }
+)";
+
+const char* kLitVs = R"(
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNormal;
 layout(location=2) in vec4 aColor;
@@ -47,52 +86,109 @@ void main() {
 }
 )";
 
-const char* kLitFs = R"(#version 330 core
+const char* kLitFs = R"(
 in vec3 vWorld;
 in vec3 vNormal;
 in vec4 vColor;
 in vec2 vUV;
-uniform vec4 uTint;
+uniform vec4 uTint;          // linear base colour factor
 uniform int uUseTex;
 uniform sampler2D uTex;
 uniform vec3 uSunDir;
 uniform vec3 uCamPos;
-uniform vec3 uFogColor;
 uniform float uFogDensity;
-uniform int uProcedural;
-uniform float uSpec;
+uniform int uProcedural;     // 1 = ground (asphalt/grass detail)
+uniform float uMetallic, uRoughness;
+uniform vec3 uEmissive;
+uniform sampler2DShadow uShadow0, uShadow1;
+uniform mat4 uLight0, uLight1;
+uniform float uTexel0, uTexel1;
 out vec4 frag;
-float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float noise(vec2 p) {
-    vec2 i = floor(p), f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
+const float PI = 3.14159265;
+
+float pcf(sampler2DShadow s, mat4 m, vec3 p, float texel, float bias) {
+    vec4 q = m * vec4(p, 1.0);
+    vec3 c = q.xyz / q.w * 0.5 + 0.5;
+    if (c.x < 0.0 || c.y < 0.0 || c.x > 1.0 || c.y > 1.0 || c.z > 1.0) return -1.0;
+    float sum = 0.0;
+    for (int i = -1; i <= 1; ++i)
+        for (int j = -1; j <= 1; ++j) sum += texture(s, vec3(c.xy + vec2(i, j) * texel, c.z - bias));
+    return sum / 9.0;
+}
+float shadow(vec3 p, vec3 n) {
+    float s = pcf(uShadow0, uLight0, p + n * 0.02, uTexel0, 0.0006);
+    if (s >= 0.0) return s;
+    s = pcf(uShadow1, uLight1, p + n * 0.15, uTexel1, 0.0010);
+    return s >= 0.0 ? s : 1.0;
 }
 void main() {
-    vec4 base = vColor * uTint;
+    vec4 base = vColor;
     if (uUseTex == 1) base *= texture(uTex, vUV);
-    if (base.a < 0.05) discard;
+    if (base.a * uTint.a < 0.05) discard;
+    vec3 albedo = pow(base.rgb, vec3(2.2)) * uTint.rgb;   // vertex colours and textures are sRGB
     vec3 n = normalize(vNormal);
     if (!gl_FrontFacing) n = -n;
+    float rough = uRoughness;
     if (uProcedural == 1) {
-        float g = noise(vWorld.xy * 4.0) * 0.07 + noise(vWorld.xy * 0.6) * 0.06 + noise(vWorld.xy * 0.05) * 0.08;
-        base.rgb *= 0.88 + g;
+        float g = noise(vWorld.xy * 6.0) * 0.10 + noise(vWorld.xy * 0.7) * 0.10 + noise(vWorld.xy * 0.05) * 0.12;
+        albedo *= 0.82 + g;
+        bool grass = albedo.g > albedo.r * 1.25 && albedo.g > albedo.b * 1.25;
+        if (grass) {
+            float stripe = step(0.5, fract((vWorld.x * 0.7071 + vWorld.y * 0.7071) / 12.0));
+            albedo *= 0.88 + 0.16 * stripe + 0.12 * noise(vWorld.xy * 2.5);
+            rough = 0.95;
+        } else {
+            // Asphalt aggregate sparkle.
+            float grain = noise(vWorld.xy * 40.0);
+            albedo *= 0.92 + 0.16 * grain;
+        }
     }
-    float diff = max(dot(n, uSunDir), 0.0);
-    float hemi = 0.5 + 0.5 * n.z;
-    vec3 amb = mix(vec3(0.22, 0.21, 0.20), vec3(0.42, 0.47, 0.56), hemi);
-    vec3 col = base.rgb * (amb + diff * vec3(1.0, 0.95, 0.86) * 0.9);
+    rough = clamp(rough, 0.04, 1.0);
+    float metal = clamp(uMetallic, 0.0, 1.0);
     vec3 v = normalize(uCamPos - vWorld);
-    vec3 h = normalize(v + uSunDir);
-    col += pow(max(dot(n, h), 0.0), 48.0) * uSpec * vec3(1.0, 0.97, 0.9);
-    float d = length(vWorld - uCamPos);
-    float fog = 1.0 - exp(-uFogDensity * d);
-    col = mix(col, uFogColor, clamp(fog, 0.0, 1.0));
-    frag = vec4(pow(col, vec3(1.0 / 1.1)), base.a);
+    vec3 l = uSunDir;
+    vec3 h = normalize(v + l);
+    float NdotL = max(dot(n, l), 0.0), NdotV = max(dot(n, v), 1e-3), NdotH = max(dot(n, h), 0.0);
+    vec3 F0 = mix(vec3(0.04), albedo, metal);
+    float a = rough * rough, a2 = a * a;
+    float d = NdotH * NdotH * (a2 - 1.0) + 1.0;
+    float D = a2 / (PI * d * d);
+    float k = (rough + 1.0) * (rough + 1.0) / 8.0;
+    float G = (NdotL / (NdotL * (1.0 - k) + k)) * (NdotV / (NdotV * (1.0 - k) + k));
+    vec3 F = F0 + (1.0 - F0) * pow(1.0 - max(dot(h, v), 0.0), 5.0);
+    vec3 spec = D * G * F / max(4.0 * NdotL * NdotV, 1e-3);
+    vec3 kd = (1.0 - F) * (1.0 - metal);
+    float sh = NdotL > 0.0 ? shadow(vWorld, n) : 0.0;
+    vec3 sun = vec3(1.0, 0.95, 0.86) * 3.0;
+    vec3 col = (kd * albedo / PI + spec) * sun * NdotL * sh;
+    // Image-based ambient from the analytic sky: diffuse (hemisphere) + reflection.
+    float hemi = 0.5 + 0.5 * n.z;
+    vec3 ambDiffuse = mix(vec3(0.16, 0.16, 0.15), vec3(0.34, 0.40, 0.52), hemi);
+    vec3 r = reflect(-v, n);
+    vec3 env = mix(skyColor(r, l, 1.0), ambDiffuse * 1.2, rough);
+    if (r.z < 0.0) env = mix(env, ambDiffuse * 0.6, smoothstep(0.0, -0.3, r.z));
+    vec3 Fenv = F0 + (max(vec3(1.0 - rough), F0) - F0) * pow(1.0 - NdotV, 5.0);
+    float occl = mix(0.55, 1.0, sh);  // shadowed areas also see less sky
+    col += kd * albedo * ambDiffuse * occl + env * Fenv * occl;
+    col += uEmissive;
+    float dist = length(vWorld - uCamPos);
+    float fog = 1.0 - exp(-uFogDensity * dist);
+    col = mix(col, skyColor(-v, l, 0.0) * 0.95, clamp(fog, 0.0, 1.0));
+    frag = vec4(toDisplay(col), 1.0);
 }
 )";
 
-const char* kSkyVs = R"(#version 330 core
+const char* kShadowVs = R"(
+layout(location=0) in vec3 aPos;
+uniform mat4 uLightVP;
+uniform mat4 uModel;
+void main() { gl_Position = uLightVP * uModel * vec4(aPos, 1.0); }
+)";
+const char* kShadowFs = R"(
+void main() {}
+)";
+
+const char* kSkyVs = R"(
 out vec2 vNdc;
 void main() {
     vec2 p = vec2((gl_VertexID == 1) ? 3.0 : -1.0, (gl_VertexID == 2) ? 3.0 : -1.0);
@@ -101,26 +197,25 @@ void main() {
 }
 )";
 
-const char* kSkyFs = R"(#version 330 core
+const char* kSkyFs = R"(
 in vec2 vNdc;
 uniform vec3 uCamRight, uCamUp, uCamFwd, uSunDir;
 uniform float uTanHalf, uAspect;
 out vec4 frag;
 void main() {
     vec3 dir = normalize(uCamFwd + vNdc.x * uTanHalf * uAspect * uCamRight + vNdc.y * uTanHalf * uCamUp);
-    float t = clamp(dir.z, -0.1, 1.0);
-    vec3 horizon = vec3(0.78, 0.84, 0.90);
-    vec3 zenith = vec3(0.30, 0.50, 0.80);
-    vec3 col = mix(horizon, zenith, pow(max(t, 0.0), 0.6));
-    float sun = max(dot(dir, uSunDir), 0.0);
-    col += vec3(1.0, 0.9, 0.7) * (pow(sun, 600.0) * 4.0 + pow(sun, 12.0) * 0.12);
-    frag = vec4(col, 1.0);
+    vec3 col = skyColor(dir, uSunDir, 1.0);
+    float sd = max(dot(dir, uSunDir), 0.0);
+    col += vec3(1.0, 0.9, 0.75) * smoothstep(0.9997, 0.99985, sd) * 30.0;  // sun disc
+    frag = vec4(toDisplay(col), 1.0);
 }
 )";
 
 GLuint compile(GLenum type, const char* src, std::string* error) {
+    // Every stage gets the version line and the shared GLSL helpers.
+    const char* parts[3] = {"#version 330 core\n", type == GL_FRAGMENT_SHADER ? kCommonGlsl : "", src};
     const GLuint s = gl::CreateShader(type);
-    gl::ShaderSource(s, 1, &src, nullptr);
+    gl::ShaderSource(s, 3, parts, nullptr);
     gl::CompileShader(s);
     GLint ok = 0;
     gl::GetShaderiv(s, GL_COMPILE_STATUS, &ok);
@@ -194,7 +289,8 @@ Mat4 beam(const Vec3f& a, const Vec3f& b, float thickness) {
 bool Renderer::buildShaders(std::string* error) {
     lit_ = link(kLitVs, kLitFs, error);
     sky_ = link(kSkyVs, kSkyFs, error);
-    if (!lit_ || !sky_) return false;
+    shadowProg_ = link(kShadowVs, kShadowFs, error);
+    if (!lit_ || !sky_ || !shadowProg_) return false;
     u_.viewProj = gl::GetUniformLocation(lit_, "uViewProj");
     u_.model = gl::GetUniformLocation(lit_, "uModel");
     u_.tint = gl::GetUniformLocation(lit_, "uTint");
@@ -202,10 +298,19 @@ bool Renderer::buildShaders(std::string* error) {
     u_.tex = gl::GetUniformLocation(lit_, "uTex");
     u_.sunDir = gl::GetUniformLocation(lit_, "uSunDir");
     u_.camPos = gl::GetUniformLocation(lit_, "uCamPos");
-    u_.fogColor = gl::GetUniformLocation(lit_, "uFogColor");
     u_.fogDensity = gl::GetUniformLocation(lit_, "uFogDensity");
     u_.procedural = gl::GetUniformLocation(lit_, "uProcedural");
-    u_.spec = gl::GetUniformLocation(lit_, "uSpec");
+    u_.metallic = gl::GetUniformLocation(lit_, "uMetallic");
+    u_.roughness = gl::GetUniformLocation(lit_, "uRoughness");
+    u_.emissive = gl::GetUniformLocation(lit_, "uEmissive");
+    u_.shadow0 = gl::GetUniformLocation(lit_, "uShadow0");
+    u_.shadow1 = gl::GetUniformLocation(lit_, "uShadow1");
+    u_.light0 = gl::GetUniformLocation(lit_, "uLight0");
+    u_.light1 = gl::GetUniformLocation(lit_, "uLight1");
+    u_.texel0 = gl::GetUniformLocation(lit_, "uTexel0");
+    u_.texel1 = gl::GetUniformLocation(lit_, "uTexel1");
+    usLightVP_ = gl::GetUniformLocation(shadowProg_, "uLightVP");
+    usModel_ = gl::GetUniformLocation(shadowProg_, "uModel");
     us_.camRight = gl::GetUniformLocation(sky_, "uCamRight");
     us_.camUp = gl::GetUniformLocation(sky_, "uCamUp");
     us_.camFwd = gl::GetUniformLocation(sky_, "uCamFwd");
@@ -213,7 +318,68 @@ bool Renderer::buildShaders(std::string* error) {
     us_.aspect = gl::GetUniformLocation(sky_, "uAspect");
     us_.sunDir = gl::GetUniformLocation(sky_, "uSunDir");
     gl::GenVertexArrays(1, &skyVao_);
+    if (!initShadows()) SDL_Log("renderer: shadow maps unavailable, continuing without shadows");
     return true;
+}
+
+bool Renderer::initShadows() {
+    gl::GenFramebuffers(1, &shadowFbo_);
+    gl::BindFramebuffer(GL_FRAMEBUFFER, shadowFbo_);
+    for (int c = 0; c < 2; ++c) {
+        gl::GenTextures(1, &shadowTex_[c]);
+        gl::BindTexture(GL_TEXTURE_2D, shadowTex_[c]);
+        gl::TexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, shadowSize_, shadowSize_, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
+                       nullptr);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    }
+    gl::FramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowTex_[0], 0);
+    gl::DrawBuffer(GL_NONE);
+    gl::ReadBuffer(GL_NONE);
+    const bool ok = gl::CheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+    gl::BindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (!ok) {
+        gl::DeleteFramebuffers(1, &shadowFbo_);
+        gl::DeleteTextures(2, shadowTex_);
+        shadowFbo_ = shadowTex_[0] = shadowTex_[1] = 0;
+    }
+    return ok;
+}
+
+void Renderer::renderShadows(const Snapshot& s, CameraMode cam) {
+    if (!shadowFbo_) return;
+    const Vec3f centre = toF(s.car.pos);
+    const Vec3f upRef = std::fabs(sunDir_.z) > 0.95f ? Vec3f{1, 0, 0} : Vec3f{0, 0, 1};
+    gl::BindFramebuffer(GL_FRAMEBUFFER, shadowFbo_);
+    gl::Viewport(0, 0, shadowSize_, shadowSize_);
+    gl::UseProgram(shadowProg_);
+    gl::Enable(GL_DEPTH_TEST);
+    gl::Enable(GL_POLYGON_OFFSET_FILL);
+    gl::PolygonOffset(1.5f, 2.0f);
+    shadowPass_ = true;
+    for (int c = 0; c < 2; ++c) {
+        const float R = shadowRadius_[c];
+        Mat4 view = Mat4::lookAt(centre + sunDir_ * 300.0f, centre, upRef);
+        // Snap the centre to whole texels so shadow edges do not shimmer while driving.
+        const float texel = 2.0f * R / float(shadowSize_);
+        const Vec3f cl = view.transformPoint(centre);
+        const float dx = std::floor(cl.x / texel) * texel - cl.x, dy = std::floor(cl.y / texel) * texel - cl.y;
+        view = Mat4::translate({dx, dy, 0.0f}) * view;
+        lightVP_[c] = Mat4::ortho(-R, R, -R, R, 100.0f, 520.0f) * view;
+        gl::FramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowTex_[c], 0);
+        gl::Clear(GL_DEPTH_BUFFER_BIT);
+        gl::UniformMatrix4fv(usLightVP_, 1, GL_FALSE, lightVP_[c].m);
+        const float white[4] = {1, 1, 1, 1};
+        drawMesh(scenery_, Mat4::identity(), white);
+        drawCar(s, cam);
+    }
+    shadowPass_ = false;
+    gl::Disable(GL_POLYGON_OFFSET_FILL);
+    gl::BindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 bool Renderer::init(const f1sim::Track& track, const f1sim::CarParams& car, const f1sim::RacingLine& line,
@@ -279,10 +445,17 @@ void Renderer::buildTrack(const f1sim::Track& track, const f1sim::RacingLine& li
         // Grass run-off up to the barriers, then terrain beyond.
         const double wl = A.widthLeft + A.runoffLeft, wlc = C.widthLeft + C.runoffLeft;
         const double wr = A.widthRight + A.runoffRight, wrc = C.widthRight + C.runoffRight;
-        strip(tb, a, c, A.widthLeft + A.kerbLeft, wl, C.widthLeft + C.kerbLeft, wlc, kGrass.c);
-        strip(tb, a, c, -wr, -A.widthRight - A.kerbRight, -wrc, -C.widthRight - C.kerbRight, kGrass.c);
-        strip(sb, a, c, wl, wl + 120.0, wlc, wlc + 120.0, kGrassFar.c);
-        strip(sb, a, c, -wr - 120.0, -wr, -wrc - 120.0, -wrc, kGrassFar.c);
+        // Subdivided across (every ~2.5 m) so the grass follows the terrain the physics
+        // drives on; one wide quad would float above or below the ground on hillsides.
+        auto runoff = [&](double a0, double a1, double c0, double c1) {
+            const int nSub = std::max(1, static_cast<int>(std::ceil(std::fabs(a1 - a0) / 2.5)));
+            for (int j = 0; j < nSub; ++j) {
+                const double u0 = double(j) / nSub, u1 = double(j + 1) / nSub;
+                strip(tb, a, c, a0 + (a1 - a0) * u0, a0 + (a1 - a0) * u1, c0 + (c1 - c0) * u0, c0 + (c1 - c0) * u1, kGrass.c);
+            }
+        };
+        runoff(A.widthLeft + A.kerbLeft, wl, C.widthLeft + C.kerbLeft, wlc);
+        runoff(-wr, -A.widthRight - A.kerbRight, -wrc, -C.widthRight - C.kerbRight);
 
         // Barriers: tyre wall with a striped top band (strong motion cue).
         for (int side = 0; side < 2; ++side) {
@@ -341,6 +514,27 @@ void Renderer::buildTrack(const f1sim::Track& track, const f1sim::RacingLine& li
         const Vec3f mn{std::min(l.x, r.x) - 0.5f, std::min(l.y, r.y) - 0.5f, zTop};
         const Vec3f mx{std::max(l.x, r.x) + 0.5f, std::max(l.y, r.y) + 0.5f, zTop + 1.6f};
         sb.addBox(mn, mx, kBrandPurple.c);
+    }
+
+    // Terrain: one height field for the whole area from the same elevation data the
+    // physics uses, slightly below the run-off so the track surfaces draw on top.
+    if (!track.isPad()) {
+        double x0, y0, x1, y1;
+        track.terrainBounds(&x0, &y0, &x1, &y1);
+        const double margin = 250.0, step = 6.0;
+        x0 -= margin; y0 -= margin; x1 += margin; y1 += margin;
+        const int nx = static_cast<int>((x1 - x0) / step) + 1, ny = static_cast<int>((y1 - y0) / step) + 1;
+        auto tp = [&](int i, int j) {
+            const double x = x0 + i * step, y = y0 + j * step;
+            return Vec3f{float(x), float(y), float(track.terrainHeight(x, y) - 0.15)};
+        };
+        for (int j = 0; j + 1 < ny; ++j) {
+            for (int i = 0; i + 1 < nx; ++i) {
+                const Vec3f p0 = tp(i, j), p1 = tp(i + 1, j), p2 = tp(i + 1, j + 1), p3 = tp(i, j + 1);
+                const Vec3f nrm = normalizef(crossf(p1 - p0, p3 - p0));
+                tb.addQuad(p0, p1, p2, p3, nrm.z < 0 ? nrm * -1.0f : nrm, kGrassFar.c);
+            }
+        }
     }
 
     // Straight-mode (DRS) activation points: a line across the track and a
@@ -415,7 +609,9 @@ void Renderer::buildTrack(const f1sim::Track& track, const f1sim::RacingLine& li
         tvCams_.push_back({float(p.x), float(p.y), float(p.z + 7.0)});
     }
     track_ = tb.upload();
+    track_.roughness = 0.93f;   // asphalt and grass: almost no sky reflection
     scenery_ = sb.upload();
+    scenery_.roughness = 0.85f;
 }
 
 void Renderer::buildCar(const f1sim::CarParams& car, const std::string& dataDir, const std::string& modelConfig) {
@@ -471,6 +667,7 @@ void Renderer::buildCar(const f1sim::CarParams& car, const std::string& dataDir,
     b.addBox({rx - 0.40f, -0.35f, 0.15f}, {rx - 0.25f, 0.35f, 0.18f}, kCarbon.c);
     b.addBox({rx - 0.05f, -0.03f, 0.10f}, {rx + 0.05f, 0.03f, 0.55f}, kCarbon.c);
     body_ = b.upload();
+    body_.roughness = 0.35f;
 
     MeshBuilder f;
     f.addBox({-0.30f, -0.49f, -0.012f}, {0.0f, 0.49f, 0.012f}, kWhite.c);  // pivots at its leading edge
@@ -529,7 +726,8 @@ void Renderer::buildCar(const f1sim::CarParams& car, const std::string& dataDir,
             fitModel(&cm, 0, float(car.chassis.length), body.scale, body.yawDeg, anchor, true);
             for (auto& part : cm.parts) {
                 if (!part.livery) continue;
-                for (int k = 0; k < 3; ++k) part.color[k] = f1sim::clamp(car.visual.livery[k], 0.0f, 1.0f);
+                // livery_rgb is an sRGB colour; glTF material colours are linear.
+                for (int k = 0; k < 3; ++k) part.color[k] = std::pow(f1sim::clamp(car.visual.livery[k], 0.0f, 1.0f), 2.2f);
             }
             bodyModel_ = uploadModel(cm);
             status = "body: " + body.file;
@@ -552,13 +750,33 @@ void Renderer::buildCar(const f1sim::CarParams& car, const std::string& dataDir,
         }
         if (wheelModelFront_.loaded()) status += (status.empty() ? "" : ", ") + std::string("wheel: ") + wheel.file;
     }
+    const ModelPlacement swp = placement("steering_wheel");
+    if (!swp.file.empty()) {
+        CpuModel cm;
+        if (loadGltf(dataDir + "/" + swp.file, swp.gltfAxes, &cm, &err)) {
+            // Real size, centred on the column (x = column axis, display facing the driver = -x).
+            fitModel(&cm, 1, 0.28f, swp.scale > 0 ? swp.scale : 1.0f, swp.yawDeg, swp.offset, false);
+            steeringWheelModel_ = uploadModel(cm);
+        } else {
+            SDL_Log("models: %s", err.c_str());
+        }
+    }
     if (!status.empty()) modelStatus_ = status;
 }
 
 void Renderer::drawMesh(const Mesh& m, const Mat4& model, const float tint[4], bool procedural) {
+    if (shadowPass_) {
+        if (m.color[3] * tint[3] < 0.05f) return;
+        gl::UniformMatrix4fv(usModel_, 1, GL_FALSE, model.m);
+        m.draw();
+        return;
+    }
     gl::UniformMatrix4fv(u_.model, 1, GL_FALSE, model.m);
     gl::Uniform4f(u_.tint, tint[0], tint[1], tint[2], tint[3]);
     gl::Uniform1i(u_.procedural, procedural ? 1 : 0);
+    gl::Uniform1f(u_.metallic, m.metallic);
+    gl::Uniform1f(u_.roughness, m.roughness);
+    gl::Uniform3f(u_.emissive, m.emissive[0], m.emissive[1], m.emissive[2]);
     gl::Uniform1i(u_.useTex, m.texture ? 1 : 0);
     if (m.texture) {
         gl::ActiveTexture(GL_TEXTURE0);
@@ -571,7 +789,6 @@ void Renderer::drawCar(const Snapshot& s, CameraMode cam) {
     const auto& st = s.car;
     const Mat4 carM = Mat4::translate(toF(st.pos)) * Mat4::fromQuat(st.rot);
     const float white[4] = {1, 1, 1, 1};
-    gl::Uniform1f(u_.spec, 0.35f);
 
     // Body.
     if (bodyModel_.loaded()) {
@@ -622,7 +839,11 @@ void Renderer::drawCar(const Snapshot& s, CameraMode cam) {
     if (cam == CameraMode::Cockpit || cam == CameraMode::Helmet) {
         const Mat4 swM = carM * Mat4::translate({0.72f, 0.0f, 0.36f}) * Mat4::rotateAxis({0, 1, 0}, -0.35f) *
                          Mat4::rotateAxis({1, 0, 0}, float(-st.steeringWheelAngle));
-        drawMesh(steeringWheel_, swM, white);
+        if (steeringWheelModel_.loaded()) {
+            for (const auto& p : steeringWheelModel_.parts) drawMesh(p, swM, p.color);
+        } else {
+            drawMesh(steeringWheel_, swM, white);
+        }
     }
 }
 
@@ -697,6 +918,8 @@ void Renderer::render(const Snapshot& s, int width, int height, CameraMode cam, 
     const Mat4 view = Mat4::lookAt(eye, target, up);
     viewProj_ = Mat4::perspective(fov, aspect, nearZ, 4000.0f) * view;
 
+    renderShadows(s, cam);
+
     gl::Viewport(0, 0, width, height);
     gl::ClearColor(0.78f, 0.84f, 0.9f, 1.0f);
     gl::Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -724,11 +947,22 @@ void Renderer::render(const Snapshot& s, int width, int height, CameraMode cam, 
     gl::UniformMatrix4fv(u_.viewProj, 1, GL_FALSE, viewProj_.m);
     gl::Uniform3f(u_.sunDir, sunDir_.x, sunDir_.y, sunDir_.z);
     gl::Uniform3f(u_.camPos, camPos_.x, camPos_.y, camPos_.z);
-    gl::Uniform3f(u_.fogColor, 0.78f, 0.84f, 0.9f);
-    gl::Uniform1f(u_.fogDensity, 0.0011f);
+    gl::Uniform1f(u_.fogDensity, 0.0008f);
     gl::Uniform1i(u_.tex, 0);
+    // Shadow maps on texture units 1 and 2.
+    gl::Uniform1i(u_.shadow0, 1);
+    gl::Uniform1i(u_.shadow1, 2);
+    for (int c = 0; c < 2; ++c) {
+        gl::ActiveTexture(GL_TEXTURE1 + c);
+        gl::BindTexture(GL_TEXTURE_2D, shadowTex_[c]);
+    }
+    gl::ActiveTexture(GL_TEXTURE0);
+    gl::UniformMatrix4fv(u_.light0, 1, GL_FALSE, lightVP_[0].m);
+    gl::UniformMatrix4fv(u_.light1, 1, GL_FALSE, lightVP_[1].m);
+    // Without shadow maps the lookups fall outside [0,1] and the scene is fully lit.
+    gl::Uniform1f(u_.texel0, 1.0f / float(shadowSize_));
+    gl::Uniform1f(u_.texel1, 1.0f / float(shadowSize_));
     const float white[4] = {1, 1, 1, 1};
-    gl::Uniform1f(u_.spec, 0.05f);
     drawMesh(track_, Mat4::identity(), white, true);
     drawMesh(scenery_, Mat4::identity(), white);
     drawCar(s, cam);
@@ -747,6 +981,12 @@ void Renderer::shutdown() {
     bodyModel_.destroy();
     wheelModelFront_.destroy();
     wheelModelRear_.destroy();
+    steeringWheelModel_.destroy();
+    if (shadowFbo_) gl::DeleteFramebuffers(1, &shadowFbo_);
+    if (shadowTex_[0]) gl::DeleteTextures(2, shadowTex_);
+    shadowFbo_ = shadowTex_[0] = shadowTex_[1] = 0;
+    if (shadowProg_) gl::DeleteProgram(shadowProg_);
+    shadowProg_ = 0;
     if (skyVao_) gl::DeleteVertexArrays(1, &skyVao_);
     if (lit_) gl::DeleteProgram(lit_);
     if (sky_) gl::DeleteProgram(sky_);

@@ -161,6 +161,9 @@ Model uploadModel(const CpuModel& cm) {
     for (const auto& p : cm.parts) {
         Mesh mesh = uploadArrays(p.vertices, p.indices);
         std::copy(p.color, p.color + 4, mesh.color);
+        mesh.metallic = p.metallic;
+        mesh.roughness = p.roughness;
+        std::copy(p.emissive, p.emissive + 3, mesh.emissive);
         if (!p.texture.empty()) {
             gl::GenTextures(1, &mesh.texture);
             gl::BindTexture(GL_TEXTURE_2D, mesh.texture);
@@ -274,11 +277,17 @@ void addPrimitive(const cgltf_primitive& prim, const float world[16], bool gltfA
     if (prim.material && prim.material->has_pbr_metallic_roughness) {
         const auto& pbr = prim.material->pbr_metallic_roughness;
         std::copy(pbr.base_color_factor, pbr.base_color_factor + 4, part.color);
+        part.metallic = pbr.metallic_factor;
+        part.roughness = pbr.roughness_factor;
         if (pbr.base_color_texture.texture && pbr.base_color_texture.texture->image) {
             if (!loadImage(pbr.base_color_texture.texture->image, baseDir, &part)) {
                 SDL_Log("model: could not load a base colour texture (%s)", stbi_failure_reason());
             }
         }
+    }
+    if (prim.material) {
+        float strength = prim.material->has_emissive_strength ? prim.material->emissive_strength.emissive_strength : 1.0f;
+        for (int k = 0; k < 3; ++k) part.emissive[k] = prim.material->emissive_factor[k] * strength;
     }
     out->parts.push_back(std::move(part));
 }

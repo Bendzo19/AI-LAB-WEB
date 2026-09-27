@@ -619,9 +619,49 @@ void Track::buildHeightGrid() {
             }
         }
     }
-    const double fallback = samples_.front().pos.z;
     hg_.resize(wz.size());
-    for (size_t k = 0; k < wz.size(); ++k) hg_[k] = static_cast<float>(ww[k] > 0.0 ? wz[k] / ww[k] : fallback);
+    std::vector<uint8_t> known(wz.size(), 0);
+    for (size_t k = 0; k < wz.size(); ++k) {
+        known[k] = ww[k] > 0.0 ? 1 : 0;
+        hg_[k] = known[k] ? static_cast<float>(wz[k] / ww[k]) : 0.0f;
+    }
+    // Cells beyond the splat reach (only the scenery terrain uses them) are filled by
+    // growing inwards from the known cells, so the terrain stays continuous.
+    for (bool changed = true; changed;) {
+        changed = false;
+        std::vector<uint8_t> next = known;
+        for (int gy = 0; gy < hgH_; ++gy) {
+            for (int gx = 0; gx < hgW_; ++gx) {
+                const size_t k = static_cast<size_t>(gy) * hgW_ + gx;
+                if (known[k]) continue;
+                double sum = 0.0;
+                int cnt = 0;
+                for (int oy = -1; oy <= 1; ++oy) {
+                    for (int ox = -1; ox <= 1; ++ox) {
+                        const int nx = gx + ox, ny = gy + oy;
+                        if (nx < 0 || ny < 0 || nx >= hgW_ || ny >= hgH_) continue;
+                        const size_t kk = static_cast<size_t>(ny) * hgW_ + nx;
+                        if (known[kk]) { sum += hg_[kk]; ++cnt; }
+                    }
+                }
+                if (cnt > 0) {
+                    hg_[k] = static_cast<float>(sum / cnt);
+                    next[k] = 1;
+                    changed = true;
+                }
+            }
+        }
+        known.swap(next);
+    }
+}
+
+double Track::terrainHeight(double x, double y) const { return baseHeight(x, y); }
+
+void Track::terrainBounds(double* minX, double* minY, double* maxX, double* maxY) const {
+    *minX = hgMinX_;
+    *minY = hgMinY_;
+    *maxX = hgMinX_ + (hgW_ - 1) * hgCell_;
+    *maxY = hgMinY_ + (hgH_ - 1) * hgCell_;
 }
 
 double Track::baseHeight(double x, double y) const {

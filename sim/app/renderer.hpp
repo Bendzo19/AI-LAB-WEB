@@ -32,11 +32,21 @@ private:
     void buildCar(const f1sim::CarParams& car, const std::string& dataDir, const std::string& modelConfig);
     void drawMesh(const Mesh& m, const Mat4& model, const float tint[4], bool procedural = false);
     void drawCar(const Snapshot& s, CameraMode cam);
+    bool initShadows();
+    void renderShadows(const Snapshot& s, CameraMode cam);
 
     GLuint lit_ = 0, sky_ = 0, skyVao_ = 0;
     struct {
-        GLint viewProj, model, tint, useTex, tex, sunDir, camPos, fogColor, fogDensity, procedural, spec;
+        GLint viewProj, model, tint, useTex, tex, sunDir, camPos, fogDensity, procedural, metallic, roughness, emissive;
+        GLint shadow0, shadow1, light0, light1, texel0, texel1;
     } u_{};
+    // Sun shadow maps: cascade 0 tight around the car, cascade 1 for the surroundings.
+    GLuint shadowProg_ = 0, shadowFbo_ = 0, shadowTex_[2] = {0, 0};
+    GLint usLightVP_ = -1, usModel_ = -1;
+    int shadowSize_ = 2048;
+    float shadowRadius_[2] = {9.0f, 140.0f};
+    Mat4 lightVP_[2];
+    bool shadowPass_ = false;
     struct {
         GLint camRight, camUp, camFwd, tanHalf, aspect, sunDir;
     } us_{};
@@ -45,7 +55,7 @@ private:
     // Built-in car
     Mesh body_, flap_, wheelFront_, wheelRear_, steeringWheel_, unitBox_;
     // External models
-    Model bodyModel_, wheelModelFront_, wheelModelRear_;
+    Model bodyModel_, wheelModelFront_, wheelModelRear_, steeringWheelModel_;
     bool bodyIncludesWheels_ = false, mirrorRightWheels_ = true;
     std::string modelStatus_ = "built-in primitive car";
 

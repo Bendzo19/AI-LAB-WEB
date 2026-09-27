@@ -77,6 +77,11 @@ public:
     // Detects long straights: runs of low curvature longer than `minLength`.
     void autoAeroZones(double minLength = 350.0);
 
+    // Smooth ground height of the surroundings (no kerbs/bumps), for scenery terrain.
+    double terrainHeight(double x, double y) const;
+    // Area covered by the elevation grid (outside it the height is extended flat).
+    void terrainBounds(double* minX, double* minY, double* maxX, double* maxY) const;
+
     // Micro-texture amplitude multiplier (1 = default); 0 disables bumps.
     void setBumpScale(double k) { bumpScale_ = k; }
 

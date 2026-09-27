@@ -65,7 +65,15 @@ bool load();  // call after the context is current; false if anything is missing
     X(void, TexImage2D, GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*) \
     X(void, TexParameteri, GLenum, GLenum, GLint)                                                  \
     X(void, GenerateMipmap, GLenum)                                                                \
-    X(void, DeleteTextures, GLsizei, const GLuint*)
+    X(void, DeleteTextures, GLsizei, const GLuint*)                                                \
+    X(void, GenFramebuffers, GLsizei, GLuint*)                                                     \
+    X(void, BindFramebuffer, GLenum, GLuint)                                                       \
+    X(void, FramebufferTexture2D, GLenum, GLenum, GLenum, GLuint, GLint)                           \
+    X(GLenum, CheckFramebufferStatus, GLenum)                                                      \
+    X(void, DeleteFramebuffers, GLsizei, const GLuint*)                                            \
+    X(void, DrawBuffer, GLenum)                                                                    \
+    X(void, ReadBuffer, GLenum)                                                                    \
+    X(void, Uniform3fv, GLint, GLsizei, const GLfloat*)
 
 #define F1SIM_GL_DECLARE(ret, name, ...) \
     using PFN_##name = ret(APIENTRY*)(__VA_ARGS__); \

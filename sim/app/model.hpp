@@ -26,7 +26,9 @@ struct Mesh {
     GLuint vao = 0, vbo = 0, ebo = 0;
     GLsizei count = 0;
     GLuint texture = 0;      // 0 = untextured
-    float color[4] = {1, 1, 1, 1};
+    float color[4] = {1, 1, 1, 1};   // linear base colour factor (glTF baseColorFactor)
+    float metallic = 0.0f, roughness = 0.6f;
+    float emissive[3] = {0, 0, 0};   // linear, added unlit (lights, LEDs, screens)
     Vec3f boundsMin{0, 0, 0}, boundsMax{0, 0, 0};
     void draw() const;
     void destroy();
@@ -58,6 +60,8 @@ struct CpuPart {
     float color[4] = {1, 1, 1, 1};
     std::vector<uint8_t> texture;  // RGBA8, empty = none
     int texWidth = 0, texHeight = 0;
+    float metallic = 0.0f, roughness = 0.6f;
+    float emissive[3] = {0, 0, 0};
     bool livery = false;           // material name starts with "Livery": recoloured with the car's livery
 };
 
