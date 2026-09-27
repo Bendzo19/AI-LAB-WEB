@@ -1,0 +1,6 @@
+build*/
+out/
+telemetry/
+config/settings.ini
+config/controls.ini
+*.user

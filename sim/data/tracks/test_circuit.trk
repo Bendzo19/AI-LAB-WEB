@@ -1,0 +1,38 @@
+# AI LAB Test Circuit - a short, clockwise test layout (~2.5 km).
+#
+# Native "turtle" format:
+#   straight <length_m>
+#   straight_free <min_length_m>   # exactly two; lengths are solved so the loop closes (error if < min)
+#   arc <radius_m> <angle_deg>     # + = left, - = right; all arcs must sum to +-360
+#   width <m>, runoff <m>, start_offset <m>, elevation <amp1 phase1 amp2 phase2>
+#
+# Corners (clockwise):
+#   T1  90 deg right, R20  - heavy braking at the end of the main straight
+#   T2  60 deg left,  R70  - fast
+#   T3 110 deg right, R45  - medium speed, long apex
+#   T4  40 deg right, R250 - high-speed sweeper
+#   T5/T6 chicane, R25
+#   T7  90 deg right, R60
+#   T8  90 deg right, R40  - onto the main straight
+
+name AI LAB Test Circuit
+width 14
+runoff 22
+start_offset 250
+elevation 5.0 0.10 2.5 0.35
+
+straight_free 100      # main straight (solved)
+arc 20 -90             # T1
+straight 150
+arc 70 60              # T2
+arc 45 -110            # T3
+straight 250
+arc 250 -40            # T4
+straight 180
+arc 25 60              # T5
+straight 30
+arc 25 -60             # T6
+straight 150
+arc 60 -90             # T7
+straight_free 100      # back straight (solved)
+arc 40 -90             # T8
