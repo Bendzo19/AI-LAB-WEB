@@ -5,3 +5,4 @@ config/settings.ini
 config/controls.ini
 *.user
 dist/
+*.blend1

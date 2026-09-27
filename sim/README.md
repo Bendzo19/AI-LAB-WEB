@@ -171,14 +171,32 @@ Ukážka výstupu benchmarku je v [docs/PHYSICS.md](docs/PHYSICS.md#validácia).
 
 ---
 
-## Vlastné modely auta (glTF / GLB)
+## Modely auta (glTF / GLB)
 
-Hra načíta ľubovoľný glTF 2.0 model: z Blenderu, zo Sketchfabu alebo
+Autá 2025 a 2026 majú 3D model vytvorený v Blenderi skriptom
+`scripts/blender/build_car.py` (parametrický: rázvor, rozchod, šírka,
+pneumatiky – presne podľa fyziky, takže sedí kokpit aj kamery). Vzniknú
+súbory `data/models/f1_20xx_body.glb`, `…_wheel_front.glb`,
+`…_wheel_rear.glb` a upraviteľná scéna `art/blender/f1_20xx.blend`.
+
+- V Blenderi: otvor `art/blender/f1_2025.blend`, uprav a exportuj
+  (File → Export → glTF 2.0, formát GLB, „+Y Up“) karosériu bez kolies do
+  `data/models/f1_2025_body.glb`.
+- Alebo zmeň rozmery/tvary v skripte a spusti ho znova:
+  `blender -b -P scripts/blender/build_car.py -- --car 2025 --out data/models --blend-dir art/blender`
+  (alebo v Blenderi: záložka Scripting → otvoriť skript → Run Script).
+- Materiály s názvom `Livery…` sa v hre prefarbia farbou z
+  `data/cars/*.ini` (`[visual] livery_rgb`), takže jeden model zvládne
+  ľubovoľné farby tímu.
+
+Hra načíta aj ľubovoľný iný glTF 2.0 model: z Blenderu, zo Sketchfabu alebo
 z generátora 3D modelov (Meshy, Tripo, Rodin, …).
 
 1. Ulož súbory do `data/models/`, napr. `my_car.glb` a `my_wheel.glb`.
-2. V `data/models/car_model.ini` nastav `body.file = models/my_car.glb`
-   a `wheel.file = models/my_wheel.glb`.
+2. V konfigurácii modelu auta (napr. `data/models/f1_2025.ini`, odkazuje
+   na ňu `[visual] model_config` v súbore auta) nastav
+   `body.file = models/my_car.glb` a `wheel.file = models/my_wheel.glb`
+   (voliteľne `[wheel_rear]` pre širšie zadné koleso).
 3. Hra model automaticky zmenší/zväčší na rozmery auta (dĺžka 5,3 m,
    priemer kolesa 720 mm) a posadí ho na zem. Jemné doladenie:
    `yaw_deg`, `offset_x/y/z`, `scale`.
@@ -225,7 +243,8 @@ sim/
   data/models/   3D modely a ich nastavenie
   tests/         regresné testy
   tools/         benchmark (validačná správa)
-  scripts/       Python: FastF1 export, trate z FastF1/TUM, porovnanie kôl
+  scripts/       Python: FastF1 export, trate z FastF1/TUM, porovnanie kôl, Blender generátor auta
+  art/blender/   upraviteľné .blend scény modelov
   docs/          fyzika, dáta, plán
 ```
 

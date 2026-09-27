@@ -13,6 +13,10 @@
   + upozornenie „volant pripojený, nenastavený“.
 - HUD: DRS AVAILABLE / DRS OPEN, farba auta z dátového súboru, DRS značky na trati.
 - Stabilný odkaz na stiahnutie (GitHub Release `f1sim-latest`).
+- **3D modely áut 2025 a 2026** z Blenderu (parametrický skript
+  `scripts/blender/build_car.py`, .blend v `art/blender/`): halo, sidepody,
+  podlaha s venturi kanálmi, difúzor, krídla, zavesenie, kolesá s krytmi
+  a pásikom zmesi; farba podľa súboru auta.
 
 ## Čo je hotové (verzia 0.1)
 
@@ -50,7 +54,8 @@ verzia. Potom ďalšie trate s prevýšením (Spa, Suzuka, Silverstone…).
 - vývoj trate (gumovanie), vietor, teplota trate
 
 ### 4. Grafika a obsah
-- 3D model auta (generovaný alebo modelovaný) – systém je pripravený (glTF)
+- detailnejší model auta (textúry, logá, kokpit a volant F1, pohyblivá
+  klapka DRS) – základ je hotový v Blenderi
 - 3D model trate: terén, obrubníky, bariéry, tribúny
 - neskôr prechod renderovania do **Unreal Engine 5** (fyzikálne jadro sa
   zabalí ako plugin – ako to robí ACC); alternatíva: Godot 4 (open source)

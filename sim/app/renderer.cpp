@@ -514,6 +514,9 @@ void Renderer::buildCar(const f1sim::CarParams& car, const std::string& dataDir,
     };
     const ModelPlacement body = placement("body");
     const ModelPlacement wheel = placement("wheel");
+    // Optional separate rear wheel (rear tyres are much wider than the fronts).
+    const ModelPlacement wheelRearCfg = placement("wheel_rear");
+    const ModelPlacement& wheelRear = wheelRearCfg.file.empty() ? wheel : wheelRearCfg;
     bodyIncludesWheels_ = ini.getBool("body.includes_wheels", false);
     mirrorRightWheels_ = ini.getBool("wheel.mirror_right", true);
     std::string status;
@@ -524,6 +527,10 @@ void Renderer::buildCar(const f1sim::CarParams& car, const std::string& dataDir,
             const Vec3f anchor{(nose + tail) * 0.5f + body.offset.x, body.offset.y,
                                (bodyIncludesWheels_ ? -cg : floorZ) + body.offset.z};
             fitModel(&cm, 0, float(car.chassis.length), body.scale, body.yawDeg, anchor, true);
+            for (auto& part : cm.parts) {
+                if (!part.livery) continue;
+                for (int k = 0; k < 3; ++k) part.color[k] = f1sim::clamp(car.visual.livery[k], 0.0f, 1.0f);
+            }
             bodyModel_ = uploadModel(cm);
             status = "body: " + body.file;
         } else {
@@ -533,13 +540,14 @@ void Renderer::buildCar(const f1sim::CarParams& car, const std::string& dataDir,
     }
     if (!wheel.file.empty() && !bodyIncludesWheels_) {
         for (int axle = 0; axle < 2; ++axle) {
+            const ModelPlacement& wp = axle == 0 ? wheel : wheelRear;
             CpuModel cm;
-            if (!loadGltf(dataDir + "/" + wheel.file, wheel.gltfAxes, &cm, &err)) {
+            if (!loadGltf(dataDir + "/" + wp.file, wp.gltfAxes, &cm, &err)) {
                 SDL_Log("models: %s", err.c_str());
                 break;
             }
             const auto& tyre = axle == 0 ? car.front.tyre : car.rear.tyre;
-            fitModel(&cm, 2, float(2.0 * tyre.radius), wheel.scale, wheel.yawDeg, wheel.offset, false);
+            fitModel(&cm, 2, float(2.0 * tyre.radius), wp.scale, wp.yawDeg, wp.offset, false);
             (axle == 0 ? wheelModelFront_ : wheelModelRear_) = uploadModel(cm);
         }
         if (wheelModelFront_.loaded()) status += (status.empty() ? "" : ", ") + std::string("wheel: ") + wheel.file;
@@ -655,7 +663,7 @@ void Renderer::render(const Snapshot& s, int width, int height, CameraMode cam, 
         }
         case CameraMode::TCam: onboard({-0.55f, 0.0f, 0.82f}, {10.0f, 0.0f, 0.3f}); break;
         case CameraMode::Nose: onboard({fx + 1.16f, 0.0f, 0.03f}, {fx + 11.0f, 0.0f, -0.05f}); break;
-        case CameraMode::Side: onboard({-0.2f, 0.62f, 0.14f}, {fx + 1.5f, 0.55f, -0.12f}); break;
+        case CameraMode::Side: onboard({-0.2f, 0.62f, 0.36f}, {fx + 1.5f, 0.55f, 0.05f}); break;  // on the sidepod shoulder
         case CameraMode::Rear: onboard({rx - 0.4f, 0.0f, 0.95f}, {rx - 12.0f, 0.0f, 0.2f}); break;
         case CameraMode::ChaseNear: chase(6.0f, 1.9f, 7.0f); break;
         case CameraMode::ChaseFar: chase(11.0f, 3.2f, 4.0f); break;

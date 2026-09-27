@@ -58,6 +58,7 @@ struct CpuPart {
     float color[4] = {1, 1, 1, 1};
     std::vector<uint8_t> texture;  // RGBA8, empty = none
     int texWidth = 0, texHeight = 0;
+    bool livery = false;           // material name starts with "Livery": recoloured with the car's livery
 };
 
 struct CpuModel {

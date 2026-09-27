@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cfloat>
 #include <cmath>
 #include <cstddef>
@@ -264,6 +265,11 @@ void addPrimitive(const cgltf_primitive& prim, const float world[16], bool gltfA
                                                Vec3f{c.px - a.px, c.py - a.py, c.pz - a.pz}));
             for (Vertex* v : {&a, &b, &c}) { v->nx = fn.x; v->ny = fn.y; v->nz = fn.z; }
         }
+    }
+    if (prim.material && prim.material->name) {
+        std::string matName = prim.material->name;
+        for (auto& ch : matName) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        part.livery = matName.rfind("livery", 0) == 0 && matName.find("accent") == std::string::npos;
     }
     if (prim.material && prim.material->has_pbr_metallic_roughness) {
         const auto& pbr = prim.material->pbr_metallic_roughness;
