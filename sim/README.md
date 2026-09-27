@@ -95,11 +95,11 @@ priečinka `telemetry/`.
 
 Potrebuješ CMake ≥ 3.20 a C++17 kompilátor. SDL3 sa stiahne automaticky.
 
-**Windows (Visual Studio 2022):**
+**Windows (Visual Studio 2022 alebo novšie, s „Desktop development with C++“):**
 
 ```bat
 cd sim
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake -S . -B build -A x64
 cmake --build build --config Release
 build\Release\f1sim.exe
 ```
