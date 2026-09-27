@@ -56,8 +56,12 @@ struct WheelState {
     double groundS = 0.0, groundD = 0.0;
 };
 
+enum class ErsMode { Balanced = 0, Qualifying = 1, Harvest = 2 };
+const char* ersModeName(ErsMode m);
+
 struct PowertrainState {
     int gear = 1;                 // -1 = R, 0 = N, 1..n
+    ErsMode ersMode = ErsMode::Balanced;
     double engineOmega = 0.0;     // [rad/s]
     double shiftTimer = 0.0;      // > 0 while a shift is in progress
     bool upshifting = false;
@@ -116,6 +120,7 @@ public:
     const Track* track() const { return track_; }
 
     void setBrakeBias(double bias) { st_.brakeBias = clamp(bias, 0.45, 0.70); }
+    void setErsMode(ErsMode m) { st_.pt.ersMode = m; }
     void setAmbient(double airC, double trackC) { airTemp_ = airC; trackTemp_ = trackC; }
     void setTyreTemperatures(double surfaceC, double carcassC);
     // Called by lap timing when crossing the line (per-lap harvest allowance).

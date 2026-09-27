@@ -19,6 +19,14 @@ double rpmToRad(double rpm) { return rpm * 2.0 * kPi / 60.0; }
 
 }  // namespace
 
+const char* ersModeName(ErsMode m) {
+    switch (m) {
+        case ErsMode::Balanced: return "BALANCED";
+        case ErsMode::Qualifying: return "QUALI";
+        default: return "HARVEST";
+    }
+}
+
 Vehicle::Vehicle(const CarParams& params, const Track* track)
     : p_(params),
       track_(track),
@@ -510,8 +518,14 @@ void Vehicle::solveDriveline(double dt, const DriverInputs& in, const std::array
     // Rough rear grip estimate used by the brake-by-wire / harvest controller.
     const double rearGripTorque = P.rear.tyre.muX * (S.wheels[RL].fz + S.wheels[RR].fz) * P.rear.tyre.radius;
     double regenAtWheels = 0.0;
-    if (driveConnected && S.throttle > 0.6 && pt.soc > 0.0 && S.brake < 0.02) {
-        const double power = pp.mgukMaxPower * taper * smoothstep(0.6, 0.98, S.throttle);
+    // Deployment map: qualifying spends everything, balanced tapers off as
+    // the battery drains so a lap does not end on an empty store.
+    const double socFrac = pt.soc / pp.batteryWindow;
+    double deployScale = 1.0;
+    if (pt.ersMode == ErsMode::Balanced) deployScale = 0.85 * smoothstep(0.10, 0.45, socFrac);
+    else if (pt.ersMode == ErsMode::Harvest) deployScale = 0.0;
+    if (driveConnected && S.throttle > 0.6 && pt.soc > 0.0 && S.brake < 0.02 && deployScale > 0.0) {
+        const double power = pp.mgukMaxPower * taper * deployScale * smoothstep(0.6, 0.98, S.throttle);
         mguk = std::min(power / omegaE, pp.mgukMaxTorque);
     } else if (driveConnected && harvestRoom > 0.0 && S.brake >= 0.02 && rearOmega > 5.0) {
         // Brake-by-wire: the rear target is met by engine braking first, then
