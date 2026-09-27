@@ -11,8 +11,13 @@ endif()
 option(F1SIM_BUILD_APP "Build the playable SDL3/OpenGL app" ON)
 option(F1SIM_BUILD_TESTS "Build unit/regression tests and the benchmark" ON)
 
+if(MINGW)
+  # Self-contained executables: no libstdc++/libgcc/winpthread DLLs to ship.
+  add_link_options(-static -static-libgcc -static-libstdc++)
+endif()
+
 if(MSVC)
-  set(F1SIM_WARNINGS /W4 /permissive- /wd4244 /wd4267)
+  set(F1SIM_WARNINGS /W4 /permissive- /Zc:preprocessor /utf-8 /wd4244 /wd4267)
 else()
   set(F1SIM_WARNINGS -Wall -Wextra -Wpedantic -Wshadow)
 endif()
@@ -85,9 +90,6 @@ if(F1SIM_BUILD_APP)
   target_link_libraries(f1sim PRIVATE f1sim_core SDL3::SDL3)
   target_compile_options(f1sim PRIVATE ${F1SIM_WARNINGS})
   target_compile_definitions(f1sim PRIVATE F1SIM_DATA_DIR="${F1SIM_SOURCE_DATA_DIR}")
-  if(MINGW)
-    target_link_options(f1sim PRIVATE -static -static-libgcc -static-libstdc++)
-  endif()
   # Ship the data folder next to the executable so the build is portable.
   add_custom_command(TARGET f1sim POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${F1SIM_SOURCE_DATA_DIR}" "$<TARGET_FILE_DIR:f1sim>/data")

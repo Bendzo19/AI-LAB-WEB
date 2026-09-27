@@ -23,6 +23,7 @@ private:
     long index_ = -1;
     double steer_ = 0.0;
     double shiftCooldown_ = 0.0;
+    double brakeCeiling_ = 1.0;
 };
 
 }  // namespace f1sim

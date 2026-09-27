@@ -1,0 +1,61 @@
+name: f1sim
+
+on:
+  push:
+    paths: ["sim/**", ".github/workflows/f1sim.yml"]
+  pull_request:
+    paths: ["sim/**", ".github/workflows/f1sim.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows (MSVC) build, tests, package
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S sim -B sim/build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build sim/build --config Release --parallel
+
+      - name: Unit and regression tests
+        run: sim/build/Release/f1sim_tests.exe
+
+      - name: Validation benchmark
+        run: sim/build/Release/f1sim_bench.exe sim/data/cars/f1_2026_generic.ini sim/data/tracks/test_circuit.trk
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/f1sim | Out-Null
+          Copy-Item sim/build/Release/f1sim.exe dist/f1sim/
+          Copy-Item sim/build/Release/f1sim_bench.exe dist/f1sim/
+          Copy-Item -Recurse sim/data dist/f1sim/data
+          Copy-Item sim/README.md dist/f1sim/
+          Copy-Item -Recurse sim/docs dist/f1sim/docs
+          Copy-Item -Recurse sim/scripts dist/f1sim/scripts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f1sim-windows-x64
+          path: dist/f1sim
+          retention-days: 30
+
+  linux:
+    name: Linux core tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S sim -B sim/build -DCMAKE_BUILD_TYPE=Release -DF1SIM_BUILD_APP=OFF
+      - name: Build
+        run: cmake --build sim/build --parallel
+      - name: Tests
+        run: sim/build/f1sim_tests
+      - name: Benchmark
+        run: sim/build/f1sim_bench

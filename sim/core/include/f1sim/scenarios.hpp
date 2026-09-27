@@ -56,6 +56,8 @@ struct LapResult {
     bool completed = false;
     std::string failure;
 };
-LapResult runAiLaps(const CarParams& car, const std::string& trackPath, int laps, double pace);
+// `telemetryCsv`: if not empty, the last completed lap is written there.
+LapResult runAiLaps(const CarParams& car, const std::string& trackPath, int laps, double pace,
+                    const std::string& telemetryCsv = "");
 
 }  // namespace f1sim

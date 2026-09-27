@@ -1,7 +1,7 @@
 // Validation report: runs the standard manoeuvres on the full vehicle model
 // and compares the results with public reference ranges for F1 cars.
 //
-//   f1sim_bench [car.ini] [track] [--laps N] [--pace 0.95] [--curve out.csv]
+//   f1sim_bench [car.ini] [track] [--laps N] [--pace 0.95] [--curve ffb.csv] [--telemetry lap.csv]
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -9,6 +9,8 @@
 #include <string>
 
 #include "f1sim/car_params.hpp"
+#include "f1sim/lapsim.hpp"
+#include "f1sim/track.hpp"
 #include "f1sim/scenarios.hpp"
 
 using namespace f1sim;
@@ -25,7 +27,7 @@ void row(const char* name, double value, const char* unit, double lo, double hi,
 int main(int argc, char** argv) {
     std::string carPath = std::string(F1SIM_DATA_DIR) + "/cars/f1_2026_generic.ini";
     std::string trackPath = std::string(F1SIM_DATA_DIR) + "/tracks/test_circuit.trk";
-    std::string curvePath;
+    std::string curvePath, telemetryPath;
     int laps = 2;
     double pace = 0.95;
     int positional = 0;
@@ -33,8 +35,27 @@ int main(int argc, char** argv) {
         if (!std::strcmp(argv[i], "--laps") && i + 1 < argc) laps = std::atoi(argv[++i]);
         else if (!std::strcmp(argv[i], "--pace") && i + 1 < argc) pace = std::atof(argv[++i]);
         else if (!std::strcmp(argv[i], "--curve") && i + 1 < argc) curvePath = argv[++i];
+        else if (!std::strcmp(argv[i], "--telemetry") && i + 1 < argc) telemetryPath = argv[++i];
         else if (positional == 0) { carPath = argv[i]; ++positional; }
         else { trackPath = argv[i]; ++positional; }
+    }
+
+    // Development builds use the source data folder; portable builds (copied
+    // elsewhere) fall back to a data folder next to the executable.
+    bool sourceData = false;
+    if (FILE* f = std::fopen(carPath.c_str(), "rb")) {
+        std::fclose(f);
+        sourceData = true;
+    }
+    if (positional == 0 && !sourceData) {
+        std::string exe = argv[0];
+        const auto slash = exe.find_last_of("/\\");
+        const std::string dir = slash == std::string::npos ? "." : exe.substr(0, slash);
+        if (FILE* f = std::fopen((dir + "/data/cars/f1_2026_generic.ini").c_str(), "rb")) {
+            std::fclose(f);
+            carPath = dir + "/data/cars/f1_2026_generic.ini";
+            trackPath = dir + "/data/tracks/test_circuit.trk";
+        }
     }
 
     CarParams car;
@@ -95,8 +116,18 @@ int main(int argc, char** argv) {
     }
 
     std::printf("Robot driver on %s (pace %.2f of the QSS profile)\n", trackPath.c_str(), pace);
-    const auto lap = runAiLaps(car, trackPath, laps, pace);
-    std::printf("  QSS theoretical lap               %9.3f s\n", lap.qssLapTime);
+    const auto lap = runAiLaps(car, trackPath, laps, pace, telemetryPath);
+    {
+        // Theoretical lap (full track width, full grip) for comparison with real lap times.
+        Track t;
+        std::string terr;
+        if (Track::load(trackPath, &t, &terr)) {
+            RacingLine line = computeRacingLine(t);
+            computeSpeedProfile(line, car);
+            std::printf("  QSS theoretical lap (ideal line)  %9.3f s   (%.0f m)\n", line.lapTime, t.length());
+        }
+    }
+    std::printf("  QSS robot target lap              %9.3f s\n", lap.qssLapTime);
     for (size_t i = 0; i < lap.lapTimes.size(); ++i) {
         std::printf("  lap %zu                             %9.3f s %s\n", i + 1, lap.lapTimes[i],
                     lap.lapValid[i] ? "" : "(invalid: track limits)");

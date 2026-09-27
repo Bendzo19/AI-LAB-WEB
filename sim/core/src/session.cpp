@@ -5,12 +5,13 @@ namespace f1sim {
 Session::Session(const CarParams& car, Track track) : car_(car), track_(std::move(track)), timer_(track_.length()) {
     vehicle_ = std::make_unique<Vehicle>(car_, &track_);
     if (!track_.isPad()) {
-        line_ = computeRacingLine(track_);
-        // The point-mass QSS model is optimistic in slow corners compared with
-        // the full model (load transfer, camber, diff); the robot driver's
-        // targets use a small grip margin.
+        // Robot-driver line: keeps a safety margin from the white lines, and
+        // targets use a small grip margin because the point-mass QSS model is
+        // optimistic in slow corners (load transfer, camber, diff).
         LapSimOptions opt;
+        opt.edgeMargin = 1.2;
         opt.gripScale = 0.92;
+        line_ = computeRacingLine(track_, opt);
         computeSpeedProfile(line_, car_, opt);
     }
     resetToStart();

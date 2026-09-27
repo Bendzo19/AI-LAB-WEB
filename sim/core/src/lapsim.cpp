@@ -43,16 +43,20 @@ RacingLine computeRacingLine(const Track& track, const LapSimOptions& opt) {
         const double dd = d[((i % n) + n) % n];
         return Vec3{s.pos.x - std::sin(s.heading) * dd, s.pos.y + std::cos(s.heading) * dd, s.pos.z};
     };
-    // Iterative curvature smoothing within the track limits. Multi-scale
-    // neighbours converge on long corners faster than a 3-point stencil.
-    for (int it = 0; it < opt.smoothingIterations; ++it) {
-        const int k = it < opt.smoothingIterations / 3 ? 6 : (it < 2 * opt.smoothingIterations / 3 ? 3 : 1);
-        for (int i = 0; i < n; ++i) {
-            const Vec3 a = pos(i - k), b = pos(i + k);
-            const Vec3 mid = (a + b) * 0.5;
-            const auto& s = smp[i];
-            const double target = (mid.x - s.pos.x) * -std::sin(s.heading) + (mid.y - s.pos.y) * std::cos(s.heading);
-            d[i] = clamp(d[i] + 0.6 * (target - d[i]), lo[i], hi[i]);
+    // Minimum-curvature line: Gauss-Seidel on the sum of squared second
+    // differences, p_i = (-p[i-2k] + 4p[i-k] + 4p[i+k] - p[i+2k]) / 6,
+    // projected onto each sample's lateral line and clamped to the track.
+    // Coarse-to-fine stencils converge on long corners quickly.
+    const int levels[] = {16, 8, 4, 2, 1};
+    const int perLevel = std::max(1, opt.smoothingIterations / 5);
+    for (int k : levels) {
+        for (int it = 0; it < perLevel; ++it) {
+            for (int i = 0; i < n; ++i) {
+                const Vec3 q = (pos(i - k) * 4.0 + pos(i + k) * 4.0 - pos(i - 2 * k) - pos(i + 2 * k)) / 6.0;
+                const auto& s = smp[i];
+                const double target = (q.x - s.pos.x) * -std::sin(s.heading) + (q.y - s.pos.y) * std::cos(s.heading);
+                d[i] = clamp(d[i] + 0.8 * (target - d[i]), lo[i], hi[i]);
+            }
         }
     }
     line.points.resize(n);
@@ -72,6 +76,15 @@ RacingLine computeRacingLine(const Track& track, const LapSimOptions& opt) {
         const double h1 = std::atan2(b.y - a.y, b.x - a.x), h2 = std::atan2(c.y - b.y, c.x - b.x);
         const double ds = 0.5 * (std::hypot(b.x - a.x, b.y - a.y) + std::hypot(c.x - b.x, c.y - b.y));
         line.curvature[i] = wrapAngle(h2 - h1) / std::max(ds, 1e-3);
+    }
+    // Light smoothing: finite differences on a 2 m grid amplify residual noise.
+    for (int pass = 0; pass < 2; ++pass) {
+        std::vector<double> c(n);
+        for (int i = 0; i < n; ++i) {
+            c[i] = (line.curvature[(i + n - 2) % n] + 2.0 * line.curvature[(i + n - 1) % n] + 3.0 * line.curvature[i] +
+                    2.0 * line.curvature[(i + 1) % n] + line.curvature[(i + 2) % n]) / 9.0;
+        }
+        line.curvature = c;
     }
     return line;
 }

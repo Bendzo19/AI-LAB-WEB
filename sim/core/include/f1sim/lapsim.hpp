@@ -29,9 +29,9 @@ struct RacingLine {
 };
 
 struct LapSimOptions {
-    double edgeMargin = 1.3;     // distance kept from the white line [m]
+    double edgeMargin = 0.6;     // car centre distance from the white line [m] (wheels may use the kerbs)
     double gripScale = 1.0;      // multiplier on tyre friction
-    int smoothingIterations = 1500;
+    int smoothingIterations = 2500;
 };
 
 RacingLine computeRacingLine(const Track& track, const LapSimOptions& opt = {});

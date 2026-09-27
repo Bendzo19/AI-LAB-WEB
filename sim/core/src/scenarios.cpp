@@ -203,7 +203,8 @@ CorneringResult runSteadyStateCircle(const CarParams& car, double radius) {
     return r;
 }
 
-LapResult runAiLaps(const CarParams& car, const std::string& trackPath, int laps, double pace) {
+LapResult runAiLaps(const CarParams& car, const std::string& trackPath, int laps, double pace,
+                    const std::string& telemetryCsv) {
     LapResult r;
     Track track;
     std::string err;
@@ -237,6 +238,10 @@ LapResult runAiLaps(const CarParams& car, const std::string& trackPath, int laps
             }
         }
         if (ev == LapTimer::Event::LapCompleted) {
+            if (!telemetryCsv.empty()) {
+                std::string werr;
+                if (!session.lastLapTelemetry().saveCsv(telemetryCsv, &werr)) r.failure = werr;
+            }
             r.lapTimes.push_back(session.timer().lastLap());
             r.lapValid.push_back(session.timer().lastLapValid());
             if (static_cast<int>(r.lapTimes.size()) >= laps) {

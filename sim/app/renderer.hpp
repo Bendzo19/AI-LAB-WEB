@@ -52,7 +52,7 @@ private:
     f1sim::CarParams car_;
     Mat4 viewProj_;
     Vec3f camPos_;
-    Vec3f chaseEye_;
+    Vec3f chaseEye_;                     // chase cams: smoothed heading direction
     bool chaseInit_ = false;
     Vec3f headOffset_{0, 0, 0};          // helmet cam: smoothed g-force head motion
     std::vector<Vec3f> tvCams_;          // trackside camera positions

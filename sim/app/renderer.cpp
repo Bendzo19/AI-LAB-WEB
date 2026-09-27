@@ -594,14 +594,15 @@ void Renderer::render(const Snapshot& s, int width, int height, CameraMode cam, 
         up = carM.transformDir({0, 0, 1});
     };
     auto chase = [&](float back, float rise, float stiffness) {
+        // Follow rigidly in position; only the viewing direction is smoothed,
+        // so the camera never lags behind at 300+ km/h.
         const f1sim::Vec3 fwdW = st.rot.rotate({1, 0, 0});
         const Vec3f dir = normalizef({float(fwdW.x), float(fwdW.y), 0.0f});
-        const Vec3f want = toF(st.pos) - dir * back + Vec3f{0, 0, rise};
-        if (!chaseInit_) { chaseEye_ = want; chaseInit_ = true; }
+        if (!chaseInit_) { chaseEye_ = dir; chaseInit_ = true; }
         const float k = 1.0f - std::exp(-dt * stiffness);
-        chaseEye_ = chaseEye_ + (want - chaseEye_) * k;
-        eye = chaseEye_;
-        target = toF(st.pos) + Vec3f{0, 0, 0.6f};
+        chaseEye_ = normalizef(chaseEye_ + (dir - chaseEye_) * k);  // smoothed heading
+        eye = toF(st.pos) - chaseEye_ * back + Vec3f{0, 0, rise};
+        target = toF(st.pos) + chaseEye_ * 2.0f + Vec3f{0, 0, 0.6f};
         fov = std::min(fov, 60.0f * float(f1sim::kPi) / 180.0f);
     };
     switch (cam) {

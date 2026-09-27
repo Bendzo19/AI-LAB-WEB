@@ -56,8 +56,12 @@ DriverInputs AIDriver::update(const VehicleState& s, double dt) {
     // Driver-level traction/lock-up management (the car has no aids).
     const double rearSlip = std::max(s.wheels[RL].slipRatio, s.wheels[RR].slipRatio);
     if (rearSlip > 0.08) throttle *= clamp(1.0 - (rearSlip - 0.08) * 8.0, 0.2, 1.0);
-    const double frontLock = std::min(s.wheels[FL].slipRatio, s.wheels[FR].slipRatio);
-    if (frontLock < -0.09) brake *= clamp(1.0 + (frontLock + 0.09) * 6.0, 0.3, 1.0);
+    // Threshold braking: the pedal ceiling drops quickly while any tyre
+    // locks and recovers otherwise, like a driver modulating at the limit.
+    double lock = 0.0;
+    for (const auto& w : s.wheels) lock = std::min(lock, w.slipRatio);
+    brakeCeiling_ = clamp(brakeCeiling_ + dt * (lock < -0.12 ? -10.0 : 3.0), 0.05, 1.0);
+    brake = std::min(brake, brakeCeiling_);
     in.throttle = throttle;
     in.brake = brake;
 

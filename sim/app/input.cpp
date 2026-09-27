@@ -87,8 +87,8 @@ void InputSystem::refreshDevices() {
         d.axes.assign(std::max(0, SDL_GetNumJoystickAxes(d.joy)), 0);
         d.buttons.assign(std::max(0, SDL_GetNumJoystickButtons(d.joy)), 0);
         d.prevButtons = d.buttons;
-        SDL_Log("input: %s [%s] axes=%zu buttons=%zu%s", d.name.c_str(), d.guid.c_str(), d.axes.size(), d.buttons.size(),
-                d.pad ? " (gamepad)" : "");
+        SDL_Log("input: %s [%s] axes=%d buttons=%d%s", d.name.c_str(), d.guid.c_str(), static_cast<int>(d.axes.size()),
+                static_cast<int>(d.buttons.size()), d.pad ? " (gamepad)" : "");
         devices_.push_back(std::move(d));
     }
     SDL_free(ids);
