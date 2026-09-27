@@ -136,7 +136,7 @@ private:
     static double side(int i) { return (i % 2 == 0) ? 1.0 : -1.0; }  // left = +1
 
     void updateAero(double dt, const DriverInputs& in);
-    void solveDriveline(double dt, const DriverInputs& in, const std::array<double, 4>& tyreTorque);
+    void solveDriveline(double dt, const std::array<double, 4>& tyreTorque);
     void updateShifting(double dt, const DriverInputs& in);
     double totalRatio(int gear) const;
     double damperForce(const AxleParams& a, double v) const;

@@ -213,7 +213,6 @@ void Vehicle::step(double dt, const DriverInputs& in) {
 
     // ---- Tyres ------------------------------------------------------------
     std::array<double, 4> tyreTorque{};
-    std::array<double, 4> wheelFz{};
     for (int i = 0; i < 4; ++i) {
         auto& w = S.wheels[i];
         const auto& a = axle(i);
@@ -252,7 +251,6 @@ void Vehicle::step(double dt, const DriverInputs& in) {
             fz = std::max(0.0, tp.vertStiffness * pen + tp.vertDamping * penRate);
         }
         w.fz = fz;
-        wheelFz[i] = fz;
         w.effectiveRadius = tp.radius - std::max(pen, 0.0) / 3.0;
         w.wheelCentre = wc;
         w.contactPoint = wc - n * dist;
@@ -428,7 +426,7 @@ void Vehicle::step(double dt, const DriverInputs& in) {
     }
 
     // ---- Driveline, brakes, ERS ---------------------------------------------------
-    solveDriveline(dt, in, tyreTorque);
+    solveDriveline(dt, tyreTorque);
 
     // ---- Chassis integration (semi-implicit Euler) ------------------------------------
     const Vec3 acc = force / mass;
@@ -457,10 +455,9 @@ void Vehicle::step(double dt, const DriverInputs& in) {
         S.steeringTorque = kingpin / sp.ratio * (1.0 - sp.powerAssist);
     }
     for (auto& wh : S.wheels) wh.spinAngle = std::fmod(wh.spinAngle + wh.omega * dt, 2.0 * kPi);
-    (void)wheelFz;
 }
 
-void Vehicle::solveDriveline(double dt, const DriverInputs& in, const std::array<double, 4>& tyreTorque) {
+void Vehicle::solveDriveline(double dt, const std::array<double, 4>& tyreTorque) {
     const auto& P = p_;
     const auto& pp = P.powertrain;
     auto& S = st_;
@@ -648,7 +645,6 @@ void Vehicle::solveDriveline(double dt, const DriverInputs& in, const std::array
                             0.9 * kStefanBoltzmann * 0.04 * (tk * tk * tk * tk - ta * ta * ta * ta);
         w.brakeTemp += dt * (heat - cool) / b.discHeatCapacity;
     }
-    (void)in;
 }
 
 }  // namespace f1sim
