@@ -1,0 +1,38 @@
+F1SIM - RYCHLY START
+====================
+
+1. Spusti f1sim.exe (priecinok "data" musi zostat vedla neho).
+   Ak Windows ukaze "Windows chranil vas pocitac": Dalsie informacie -> Spustit aj tak.
+
+2. HLAVNE MENU: vyber auto (F1 2025 / F1 2026) a trat (Red Bull Ring / testovacia).
+
+3. VOLANT: klikni CONTROLS (F2) a stlac ENTER. Sprievodca sa postupne opyta na:
+      riadenie   - otoc volant uplne DOLAVA a vrat do stredu
+      plyn       - zosliapni naplno a pusti
+      brzda      - zosliapni naplno a pusti
+      spojka     - (nepovinne, MEDZERNIK preskoci)
+      padla      - stlac prave / lave padlo
+      DRS        - stlac tlacidlo, ktorym chces otvarat DRS
+   Pre znamy volant (Logitech G29/G920/G923, Thrustmaster, Fanatec, Moza,
+   Simucube...) sa automaticky nastavi force feedback.
+   T = test FFB (volant ma tahat DOLAVA; ak taha doprava, stlac I).
+
+   Logitech G29 v G HUB: rotacia 900 stupnov, Centering Spring VYPNUTY.
+
+4. DRIVE (alebo Enter).
+
+POCAS JAZDY
+   Esc        pauza (restart, hlavne menu, ovladanie, koniec)
+   C / V      kamery (kokpit, prilba, T-cam, nos, bocna, zadna, chase, TV)
+   Medzernik  DRS (len v DRS zone - HUD ukaze "DRS AVAILABLE")
+   E          rezim ERS,   [ ]  rozdelenie brzd
+   R          restart,     Backspace  vratit auto na trat
+   F3         panel aplikacii (telemetria, mapa, G-meter, podvozok...)
+   F5         autopilot (ukazka)
+
+Kazde dokoncene kolo sa ulozi ako CSV do priecinka "telemetry".
+Nastavenia su v config\settings.ini.
+
+Spatna vazba: napis, co je na volante neprirodzene (napr. "v Remus
+zakrute sa zadok utrhne prilis skoro", "FFB je v pomalych zakrutach
+prilis tazky") - fyzika sa ladi podla toho.

@@ -6,24 +6,36 @@ jednoduchá (placeholder). Modely auta a trate sa dajú kedykoľvek vymeniť
 (glTF/GLB), fyzika je samostatná knižnica pripravená aj na neskorší prechod
 do Unreal Engine 5.
 
-Aktuálny stav: **Time Trial** na krátkej testovacej trati (2,5 km) a na
-ľubovoľnej trati zo stredovej čiary (CSV).
+Aktuálny stav (v0.2): **Time Trial**, hlavné menu s výberom auta a trate.
 
-![](docs/img/screenshot-chase.png)
+- Autá: **F1 2025** (ground-effect éra, DRS, MGU-H) a **F1 2026** (aktívna
+  aerodynamika X/Z, 350 kW MGU-K). Parametre sú odhady z verejných údajov,
+  každá hodnota má v súbore zdroj a mieru istoty.
+- Trate: **Red Bull Ring** (stredová čiara z TUM racetrack-database,
+  prevýšenie 62 m z Copernicus DEM, 3 DRS zóny) a krátka testovacia trať.
+- Volanty: automatické predvoľby FFB pre Logitech G29/G920/G923/G PRO,
+  Thrustmaster, Fanatec, Moza, Simucube, Asetek, Simagic.
+
+![Hlavné menu](docs/img/screenshot-menu.png)
+
+![Red Bull Ring, F1 2025](docs/img/screenshot-rbr.png)
 
 ---
 
 ## Rýchly štart (Windows)
 
-1. Stiahni zostavenú hru:
-   - GitHub → **Actions** → workflow **f1sim** → posledný beh → artefakt
-     `f1sim-windows-x64`, **alebo**
-   - zostav si ju sám (nižšie).
-2. Rozbaľ a spusti `f1sim.exe`. Priečinok `data` musí byť vedľa exe súboru.
+1. Stiahni najnovšiu zostavu (vytvára sa automaticky po každej zmene):
+   **https://github.com/Bendzo19/AI-LAB-WEB/releases/download/f1sim-latest/f1sim-windows-x64.zip**
+   (alebo si ju zostav sám – nižšie).
+2. Rozbaľ celý priečinok a spusti `f1sim.exe`. Priečinok `data` musí byť
+   vedľa exe súboru. Windows SmartScreen môže upozorniť na nepodpísanú
+   aplikáciu → „Ďalšie informácie“ → „Spustiť aj tak“.
 3. Pripoj volant a pedále ešte pred spustením (hot-plug funguje, ale
    pohodlnejšie je mať ich pripojené).
-4. Stlač **F2** a naviaž ovládanie (postup nižšie).
-5. Jazdi. **Esc** otvorí pauzové menu.
+4. V hlavnom menu vyber auto a trať, klikni **CONTROLS (F2)** a stlač
+   **Enter** – sprievodca naviaže volant, pedále a pádla (postup nižšie).
+5. **DRIVE**. Počas jazdy **Esc** otvorí pauzové menu (odtiaľ sa dá vrátiť
+   do hlavného menu a zmeniť auto/trať).
 
 Požiadavky: Windows 10/11, grafika s OpenGL 3.3 (každá karta za posledných
 ~12 rokov), volant s DirectInput force feedbackom (Logitech, Thrustmaster,
@@ -31,14 +43,33 @@ Fanatec, Moza, Simucube, …).
 
 ### Nastavenie volantu a pedálov (F2)
 
+**Enter** spustí sprievodcu: postupne sa pýta na riadenie, plyn, brzdu,
+spojku, pádla a aktívnu aerodynamiku (DRS). **Medzerník** preskočí krok
+(napr. spojku), **Esc** sprievodcu zastaví. Po naviazaní riadenia sa podľa
+názvu zariadenia **automaticky použije predvoľba volantu** (moment
+základne, rotácia 900°, filter, kompenzácia mŕtvej zóny). Predvoľbu je možné
+kedykoľvek použiť znova klávesom **W**.
+
+**Logitech G29 (a G920/G923) – nastavenie v G HUB:**
+rotácia **900°**, **Centering Spring vypnutý**, citlivosť 50, TRUEFORCE
+vypnutý (G923). V hre je predvoľba: 2,2 Nm, mierka momentu 0,12, filter
+60 Hz, minimálna sila 7 % (G29 má ozubené prevody a malé sily by inak
+„zapadli“ do mŕtvej zóny). Ak je FFB v rýchlych zákrutách stále „na doraz“
+(stĺpec klipovania v aplikácii INPUTS & FFB), zníž **K** (mierka momentu).
+
+Iné volanty: po naviazaní riadenia sa zobrazí, čo nastaviť v ich ovládači
+(Fanatec, Thrustmaster, Moza Pit House, Simucube True Drive…).
+
 | Kláves | Čo spraviť |
 |---|---|
+| **Enter** | Sprievodca (všetko po poradí). |
+| **W** | Použiť predvoľbu pre pripojený volant. |
 | **1** | Otoč volantom **úplne doľava** a vráť do stredu (naviaže os riadenia). |
 | **2** | Plyn: zošliapni naplno a pusti. |
 | **3** | Brzda: zošliapni naplno a pusti. |
 | **4** | Spojka (nepovinné). |
 | **5 / 6** | Pádla: preraď hore / dole (stlač tlačidlo). |
-| **7** | Aktívna aerodynamika (X-mode). |
+| **7** | DRS (2025) / aktívna aerodynamika X-mode (2026). |
 | **8 / 9** | Reset auta / prepínanie režimu ERS. |
 | **, .** | Rotácia volantu – **musí sa zhodovať s nastavením v ovládači volantu** (napr. 900° alebo 360°). Riadenie je 1:1 s volantom F1 (±180°); za dorazom auta zabráni ďalšiemu otáčaniu soft-lock. |
 | **M N** | Maximálny moment tvojej základne (G29 ≈ 2,2 Nm, CSL DD 5–8 Nm, DD Pro 8 Nm, DD1 20 Nm). |
@@ -61,13 +92,14 @@ rýchlosti). Na realistický zážitok je určený volant.
 | ↑ / ↓ | plyn / brzda (klávesnica) |
 | ← / → | riadenie (klávesnica) |
 | A / Z (L-Shift / L-Ctrl) | preradenie hore / dole |
-| Medzerník | aktívna aerodynamika (X-mode na rovinke, pri brzdení sa sama zatvorí) |
+| Medzerník | DRS (2025 – len v DRS zóne, HUD ukáže „DRS AVAILABLE“) / aktívna aerodynamika (2026 – X-mode na rovinke); pri brzdení sa zatvorí |
 | E | režim ERS: vyvážený / kvalifikačný / nabíjanie |
 | [ / ] | rozdelenie bŕzd dozadu / dopredu |
 | C / V | ďalšia / predchádzajúca kamera |
 | − / = | zorné pole (FOV) |
 | F3 alebo myš k pravému okraju | panel aplikácií |
 | R | reštart z boxovej rovinky |
+| Esc → MAIN MENU | výber auta a trate |
 | Backspace | vrátiť auto na trať |
 | F5 | autopilot (robot jazdí sám – ukážka) |
 | F1 | pomoc |
@@ -95,7 +127,14 @@ priečinka `telemetry/`.
 
 Potrebuješ CMake ≥ 3.20 a C++17 kompilátor. SDL3 sa stiahne automaticky.
 
-**Windows (Visual Studio 2022 alebo novšie, s „Desktop development with C++“):**
+**Windows – Visual Studio 2022 alebo novšie** (pri inštalácii zaškrtni
+„Desktop development with C++“, obsahuje aj CMake):
+
+- *Najjednoduchšie:* **File → Open → Folder…** a vyber priečinok `sim`.
+  Visual Studio samo načíta `CMakeLists.txt` (prvýkrát stiahne SDL3, chvíľu
+  to trvá). Hore zvoľ konfiguráciu **x64-Release**, ako spúšťací cieľ
+  **f1sim.exe** a stlač **F5**.
+- *Z príkazového riadku* („Developer PowerShell for VS“):
 
 ```bat
 cd sim
@@ -123,9 +162,9 @@ Voľby: `-DF1SIM_BUILD_APP=OFF` zostaví iba fyziku, testy a benchmark.
 ### Testy a validácia
 
 ```bash
-./build/f1sim_tests        # 23 regresných testov (pneumatika, trať, vozidlo, ERS, FFB, časomiera…)
+./build/f1sim_tests        # 28 regresných testov (pneumatika, trať, vozidlo, ERS, FFB, predvoľby volantov…)
 ./build/f1sim_bench        # validačná správa proti verejným hodnotám F1
-./build/f1sim_bench data/cars/f1_2026_generic.ini data/tracks/Monza.csv --telemetry monza.csv
+./build/f1sim_bench data/cars/f1_2025_generic.ini data/tracks/red_bull_ring.csv --telemetry rbr.csv
 ```
 
 Ukážka výstupu benchmarku je v [docs/PHYSICS.md](docs/PHYSICS.md#validácia).
@@ -152,11 +191,16 @@ s kolesami „napevno“, nastav `body.includes_wheels = true`.
 
 - `.trk` – vlastný formát (rovinky/oblúky, automatické uzavretie),
   pozri `data/tracks/test_circuit.trk`.
-- `.csv` – formát TUM racetrack-database `x_m,y_m,w_tr_right_m,w_tr_left_m[,z_m]`.
+- `.csv` – formát TUM racetrack-database `x_m,y_m,w_tr_right_m,w_tr_left_m[,z_m]`,
+  voliteľne s riadkami `# name Red Bull Ring` a `# aero_zone <začiatok_m> <koniec_m>`
+  (DRS zóny; bez nich sa zóny odvodia z dlhých rovinek).
   - `python scripts/fetch_tum_track.py Monza` stiahne stredovú čiaru a šírky.
+  - `python scripts/build_track_geo.py …` zarovná TUM čiaru na GPS geometriu
+    a doplní prevýšenie z Copernicus DEM (takto vznikol Red Bull Ring).
   - `python scripts/track_from_fastf1.py --year 2025 --event Austria --out data/tracks/rbr.csv`
-    vytvorí trať s **reálnym prevýšením** z telemetrie F1.
-- Trať sa vyberá v `config/settings.ini` → `content.track = tracks/Monza.csv`.
+    vytvorí trať s prevýšením z telemetrie F1.
+- Každý `.trk`/`.csv` v `data/tracks/` sa automaticky objaví v hlavnom menu.
+  Rovnako každé auto v `data/cars/*.ini`.
 
 ## Porovnanie s reálnou F1
 
@@ -190,5 +234,7 @@ Dokumentácia: [fyzikálny model](docs/PHYSICS.md) · [dáta a zdroje](docs/DATA
 ## Licencie tretích strán
 
 SDL3 (zlib), stb_image / stb_image_write / stb_easy_font (public domain),
-cgltf (MIT). Trate z TUM racetrack-database sú pod LGPL-3.0 a v repozitári
-nie sú – sťahujú sa skriptom.
+cgltf (MIT). Red Bull Ring: stredová čiara a šírky z TUM racetrack-database
+(LGPL-3.0), geometria z bacinger/f1-circuits (MIT), prevýšenie z Copernicus
+DEM GLO-30 – podrobnosti a texty licencií v `data/tracks/SOURCES.md` a
+`data/tracks/licenses/`.

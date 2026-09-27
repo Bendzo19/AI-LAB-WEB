@@ -22,11 +22,11 @@ inline void fail(const char* file, int line, const std::string& msg) {
     ++failures();
 }
 
-inline f1sim::CarParams loadCar() {
+inline f1sim::CarParams loadCar(const std::string& file = "cars/f1_2026_generic.ini") {
     f1sim::CarParams car;
     std::string err;
     std::vector<std::string> warnings;
-    if (!f1sim::CarParams::load(std::string(F1SIM_DATA_DIR) + "/cars/f1_2026_generic.ini", &car, &err, &warnings)) {
+    if (!f1sim::CarParams::load(std::string(F1SIM_DATA_DIR) + "/" + file, &car, &err, &warnings)) {
         std::printf("cannot load car: %s\n", err.c_str());
         std::abort();
     }

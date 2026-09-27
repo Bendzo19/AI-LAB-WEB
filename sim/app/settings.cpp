@@ -63,6 +63,7 @@ bool Settings::load(const std::string& path, std::string* error) {
     ffbRateHz = static_cast<int>(ini.getDouble("ffb.rate_hz", ffbRateHz));
 
     wheelRotationDeg = ini.getDouble("controls.wheel_rotation_deg", wheelRotationDeg);
+    wheelPreset = ini.getString("controls.wheel_preset", wheelPreset);
     brakeGamma = ini.getDouble("controls.brake_gamma", brakeGamma);
     pedalDeadzone = ini.getDouble("controls.pedal_deadzone", pedalDeadzone);
     keyboardSteerSpeed = ini.getDouble("controls.keyboard_steer_speed", keyboardSteerSpeed);
@@ -109,6 +110,7 @@ bool Settings::save(const std::string& path) const {
     ini.set("ffb.invert", ffb.invert ? "true" : "false");
     ini.set("ffb.rate_hz", ffbRateHz);
     ini.set("controls.wheel_rotation_deg", wheelRotationDeg);
+    ini.set("controls.wheel_preset", wheelPreset);
     ini.set("controls.brake_gamma", brakeGamma);
     ini.set("controls.pedal_deadzone", pedalDeadzone);
     ini.set("controls.keyboard_steer_speed", keyboardSteerSpeed);
@@ -127,6 +129,7 @@ bool Settings::save(const std::string& path) const {
     ini.set("session.save_telemetry", saveTelemetry ? "true" : "false");
     return ini.saveFile(path,
                         "f1sim settings. Edit while the game is closed, or use the in-game setup (F2).\n"
+                        "ffb.*: filled from a preset when a known wheel is bound (controls.wheel_preset); edit freely.\n"
                         "ffb.device_max_torque_nm: peak torque of your wheel base (e.g. G29 2.2, CSL DD 8, DD Pro 8, DD1 20).\n"
                         "controls.wheel_rotation_deg must match the rotation set in your wheel driver.");
 }

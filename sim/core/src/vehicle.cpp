@@ -482,7 +482,9 @@ void Vehicle::solveDriveline(double dt, const std::array<double, 4>& tyreTorque)
     else if (pt.shiftTimer <= 0.0 && wheelSideRpm < pp.idleRpm + 1500.0) {
         // Launch / anti-stall: the clutch bites harder as the engine revs up,
         // so the engine settles where its torque matches the clutch torque.
-        autoEng = smoothstep(pp.idleRpm - 500.0, pp.idleRpm + 3000.0, rpm);
+        // Off the throttle the clutch stays open (no idle creep; the car
+        // rolls freely at walking pace like a real F1 car with anti-stall).
+        autoEng = smoothstep(pp.idleRpm - 500.0, pp.idleRpm + 3000.0, rpm) * smoothstep(0.02, 0.08, S.throttle);
     }
     // The actuator cannot slam the clutch shut: engagement rises over ~0.35 s
     // but opens quickly (anti-stall).

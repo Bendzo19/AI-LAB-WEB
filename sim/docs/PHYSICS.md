@@ -95,31 +95,38 @@ klipovanie (keď požadovaný moment prekročí možnosti volantu).
 
 ## Validácia
 
-`f1sim_bench` (auto `f1_2026_generic.ini`, výsledok v tomto repozitári):
+`f1sim_bench` (výsledky v tomto repozitári):
 
-| Test | Výsledok | Verejná referencia |
-|---|---|---|
-| 0–100 km/h | 2,98 s | 2,4–3,5 s (bez TC závisí od štartu) |
-| 0–200 km/h | 5,09 s | 4–6 s |
-| Max. rýchlosť Z / X-mode | 324 / 349 km/h | 300–345 / 325–365 |
-| Brzdenie 300→100 km/h | 90 m, 1,79 s | 70–130 m |
-| Max. spomalenie | 5,6 g | 4–6,5 g |
-| Bočné preťaženie R50 | 2,2 g pri 111 km/h | 1,8–2,8 g |
-| Bočné preťaženie R150 | 3,9 g pri 274 km/h | 3–4,8 g |
-| Moment volantu na limite (R150) | 14,7 Nm | 3–40 Nm |
+| Test | F1 2025 | F1 2026 | Verejná referencia |
+|---|---|---|---|
+| 0–100 km/h | 2,75 s | 2,98 s | 2,4–3,5 s (bez TC závisí od štartu) |
+| 0–200 km/h | 4,80 s | 5,09 s | 4–6 s |
+| Max. rýchlosť (DRS/Z-mode zatvorené / otvorené) | 332 / 345 km/h | 324 / 349 km/h | 300–345 / 325–365 |
+| Brzdenie 300→100 km/h | 80 m, 1,60 s | 90 m, 1,79 s | 70–130 m |
+| Max. spomalenie | 6,9 g | 5,6 g | 4–7 g (autá 2022–25 ~6 g) |
+| Bočné preťaženie R50 | 2,5 g pri 123 km/h | 2,2 g pri 111 km/h | 1,8–2,8 g |
+| Bočné preťaženie R150 | 4,8 g pri 303 km/h | 3,9 g pri 274 km/h | 3–5 g |
+| Moment volantu na limite (R150) | 20,1 Nm | 14,7 Nm | 3–40 Nm |
 
-Teoretický čas kola (kvázi-statický model, ideálna stopa, trate z TUM
-databázy – bez prevýšenia) vs. pole position 2025:
+Teoretický čas kola (kvázi-statický model bodovej hmoty, ideálna stopa) vs.
+pole position 2025:
 
-| Trať | Model (auto 2026) | Pole 2025 |
-|---|---|---|
-| Monza | 82,6 s | 78,8 s |
-| Red Bull Ring | 68,3 s | 64,0 s |
-| Silverstone | 93,7 s | 84,9 s |
+| Trať | Auto 2025 | Auto 2026 | Pole 2025 |
+|---|---|---|---|
+| Red Bull Ring (s prevýšením) | 67,3 s | 68,3 s | 63,971 s |
+| Monza (TUM, bez prevýšenia) | – | 82,6 s | 78,8 s |
+| Silverstone (TUM, bez prevýšenia) | – | 93,7 s | 84,9 s |
 
-Model je 5–10 % pomalší na rýchlych tratiach, čo sčasti zodpovedá menšiemu
-prítlaku áut 2026. Presná kalibrácia potrebuje telemetriu áut 2026 (FastF1)
-a tratí s prevýšením – postup v [DATA.md](DATA.md).
+Model je ~5 % pomalší na RBR. Hlavné známe príčiny: kvázi-statický model
+nepozná kombinovanú priľnavosť pri brzdení do zákruty tak dobre ako jazdec,
+stredová čiara TUM má v Remus (T3) polomer len ~8 m, a prítlak auta 2025 je
+odhad. Presná kalibrácia potrebuje telemetriu (FastF1) – postup v
+[DATA.md](DATA.md).
+
+Stabilita na svahoch: Red Bull Ring má stúpanie až 12,9 %. Výška povrchu je
+hladké 2D pole (2 m bunky), takže sa v ostrých zákrutách na svahu „neprekladá“,
+a dotaz na zem je presný aj pri veľkom sklone (regresný test
+`track_query_is_exact_on_steep_slopes`).
 
 ## Čo model zatiaľ nemá (úprimne)
 
@@ -129,5 +136,6 @@ a tratí s prevýšením – postup v [DATA.md](DATA.md).
 - Poddajnosť riadenia a karosérie, gyroskopické efekty kolies.
 - Počasie, gumovanie trate, vývoj teploty trate.
 - Presné mapy motora a ERS (skutočné sú tajné) – nasadenie je zjednodušené.
-- Robot-jazdec je testovací nástroj, nie súper; na reálnych tratiach
-  jazdí ~12–15 % pod limitom a občas vyjde z trate.
+- Robot-jazdec je testovací nástroj, nie súper; na Red Bull Ringu jazdí
+  kolá 78–87 s (neplatné – v pomalých zákrutách Remus a T4 prichádza
+  rýchlo a vyjde za obrubník). Na fyziku auta pre človeka to vplyv nemá.

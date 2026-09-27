@@ -74,6 +74,25 @@ TEST_CASE(vehicle_is_deterministic) {
     CHECK(a.state().wheels[RL].omega == b.state().wheels[RL].omega);
 }
 
+TEST_CASE(vehicle_does_not_creep_off_throttle) {
+    // Anti-stall keeps the clutch open without throttle: a stationary car in
+    // gear on level ground stays put (regression: it crept to ~33 km/h).
+    for (const char* file : {"cars/f1_2025_generic.ini", "cars/f1_2026_generic.ini"}) {
+        const auto car = th::loadCar(file);
+        Track pad = Track::flatPad();
+        Vehicle v(car, &pad);
+        v.resetAt(0, 0, 0.0, 1);
+        DriverInputs in;
+        for (int i = 0; i < 5000; ++i) v.step(0.001, in);
+        CHECK(v.state().speed() < 0.3);
+        CHECK(v.state().rpm() > car.powertrain.idleRpm - 300.0);  // engine idles, not stalled
+        // ...and still pulls away normally.
+        in.throttle = 1.0;
+        for (int i = 0; i < 2000; ++i) v.step(0.001, in);
+        CHECK(v.state().speed() > 15.0);
+    }
+}
+
 TEST_CASE(vehicle_ers_deploys_and_harvests) {
     const auto car = th::loadCar();
     Track pad = Track::flatPad();

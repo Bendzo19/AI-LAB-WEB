@@ -33,9 +33,9 @@ extern const int kAppCount;
 
 struct Settings {
     // Content
-    std::string carFile = "cars/f1_2026_generic.ini";
-    std::string trackFile = "tracks/test_circuit.trk";
-    std::string carModelFile = "models/car_model.ini";
+    std::string carFile = "cars/f1_2025_generic.ini";
+    std::string trackFile = "tracks/red_bull_ring.csv";
+    std::string carModelFile;      // empty = the car's own [visual] model_config
 
     // Graphics
     int windowWidth = 1600, windowHeight = 900;
@@ -52,6 +52,7 @@ struct Settings {
 
     // Steering and pedals
     double wheelRotationDeg = 900.0; // must match the wheel driver's rotation setting
+    std::string wheelPreset;         // label of the applied wheel preset, empty = generic defaults
     double brakeGamma = 1.0;         // brake pedal response curve (1 = linear)
     double pedalDeadzone = 0.02;
     AxisBinding steer, throttle, brake, clutch;

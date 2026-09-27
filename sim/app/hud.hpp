@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "content.hpp"
 #include "f1sim/track.hpp"
 #include "gl.hpp"
 #include "input.hpp"
@@ -26,6 +27,18 @@ struct HudContext {
     BindTarget binding = BindTarget::None;
     bool showHelp = false, showSetup = false, showSidebar = false;
     float fps = 0.0f;
+
+    // Wheel preset / guided setup (setup screen and main menu status line).
+    std::string wheelName;          // detected wheel (preset match), empty = none
+    std::string presetHint;         // what to set in the vendor driver
+    std::string guidedStep;         // "2/7" while the guided setup runs
+
+    // Main menu.
+    bool showMainMenu = false;
+    const Catalog* catalog = nullptr;
+    int menuCar = 0, menuTrack = 0, menuFocus = 0;  // focus 0 = cars, 1 = tracks
+    std::string menuError, menuStatus;
+    std::string version;
 };
 
 struct MouseState {
@@ -33,12 +46,13 @@ struct MouseState {
     bool down = false, pressed = false, released = false;
 };
 
-enum class MenuAction { None, Resume, Restart, Controls, Help, Quit };
+enum class MenuAction { None, Resume, Restart, Controls, Help, Quit, MainMenu, Drive };
 
 struct HudResult {
     MenuAction action = MenuAction::None;
     bool layoutChanged = false;   // apps toggled or moved: save settings
     bool mouseOverUi = false;
+    int pickCar = -1, pickTrack = -1;   // main menu selection changed
 };
 
 class Hud {
@@ -81,6 +95,8 @@ private:
     void drawSidebar(const MouseState& m, int w, int h, HudResult* r);
     void drawHelp(const HudContext& c, int w, int h);
     void drawSetup(const HudContext& c, int w, int h);
+    void drawMainMenu(const HudContext& c, const MouseState& m, int w, int h, HudResult* r);
+    std::string fitText(const std::string& s, float scale, float maxWidth) const;
 
     struct V { float x, y; float r, g, b, a; };
     std::vector<V> verts_;

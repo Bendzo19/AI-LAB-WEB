@@ -1,5 +1,19 @@
 # Plán a potrebné nástroje
 
+## Čo je nové vo verzii 0.2
+
+- Auto **F1 2025** (ground-effect, DRS len v DRS zónach, MGU-H, limit
+  nasadenia 4 MJ/kolo) popri aute 2026.
+- **Red Bull Ring** s reálnym prevýšením (62 m, stúpanie až 12,9 %) a 3 DRS
+  zónami; hladké výškové pole trate, presný kontakt kolies na svahu.
+- **Hlavné menu** (výber auta a trate, načíta všetko z `data/`), návrat
+  z pauzy, zmena obsahu bez reštartu hry.
+- **Predvoľby volantov** (Logitech G29/G920/G923/G PRO, Thrustmaster,
+  Fanatec, Moza, Simucube, Asetek, Simagic) + sprievodca nastavením (Enter v F2)
+  + upozornenie „volant pripojený, nenastavený“.
+- HUD: DRS AVAILABLE / DRS OPEN, farba auta z dátového súboru, DRS značky na trati.
+- Stabilný odkaz na stiahnutie (GitHub Release `f1sim-latest`).
+
 ## Čo je hotové (verzia 0.1)
 
 - Fyzikálne jadro 1000 Hz: podvozok, zavesenie, pneumatiky s teplotami,
@@ -12,7 +26,7 @@
 - 9 kamier, HUD aplikácie v štýle AC, pauzové menu.
 - Testovacia trať + import tratí (TUM CSV, FastF1 s prevýšením).
 - Načítanie vlastných 3D modelov (glTF/GLB).
-- 23 regresných testov, validačný benchmark, Windows build, CI.
+- Regresné testy (teraz 28), validačný benchmark, Windows build, CI.
 
 ## Ďalšie kroky (navrhované poradie)
 
@@ -22,9 +36,11 @@ príliš slabé/silné, cítiť obrubníky, nie je volant „mŕtvy“ v strede,
 na rovinke? Ako sa auto správa na limite (nedotáčavosť/pretáčavosť)?
 Pošli mi `config/settings.ini` a pár súborov z `telemetry/`.
 
-### 2. Kalibrácia na reálne dáta 2026
-FastF1 skripty (na tvojom PC) → porovnanie → úprava parametrov → nová verzia.
-Viac tratí s prevýšením.
+### 2. Kalibrácia na reálne dáta 2025 (Red Bull Ring)
+FastF1 skripty (na tvojom PC): `python scripts/fastf1_export.py --year 2025
+--event Austria --session Q --out rbr_q.csv` → porovnanie s tvojím kolom
+(`scripts/compare_laps.py`) → úprava prítlaku, pneumatík a výkonu → nová
+verzia. Potom ďalšie trate s prevýšením (Spa, Suzuka, Silverstone…).
 
 ### 3. Fyzika – ďalšia úroveň
 - opotrebenie a degradácia pneumatík, tlaky podľa nastavenia, zmesi C1–C5
@@ -41,7 +57,7 @@ Viac tratí s prevýšením.
 - zvuk: motor podľa otáčok a záťaže, pneumatiky pri šmyku, prevodovka
 
 ### 5. Hra
-- hlavné menu: výber auta, trate, relácie
+- výber relácie (tréning / kvalifikácia / preteky), počasie a teplota
 - ghost auto (najlepšie kolo), replay (fyzika je deterministická)
 - AI súperi (lepší AI jazdec s prediktívnym riadením – MPC)
 - motion platformy a externé displeje: výstup telemetrie cez UDP

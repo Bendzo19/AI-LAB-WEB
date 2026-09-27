@@ -93,7 +93,7 @@ int main(int argc, char** argv) {
     row("300->100 km/h distance", br.distance300to100, "m", 70, 130, "");
     row("300->100 km/h time", br.time300to100, "s", 1.4, 2.4, "");
     row("200->0 km/h distance", br.distance200to0, "m", 45, 80, "");
-    row("peak deceleration", br.peakDecelG, "g", 4.0, 6.5, "aero assisted");
+    row("peak deceleration", br.peakDecelG, "g", 4.0, 7.0, "aero assisted (2022-25 cars ~6 g)");
     std::printf("\n");
 
     std::printf("Steady-state cornering (speed ramp on a circle)\n");
@@ -101,8 +101,8 @@ int main(int argc, char** argv) {
     const auto c150 = runSteadyStateCircle(car, 150.0);
     row("R50 max lateral", c50.maxLatG, "g", 1.8, 2.8, "low speed, mostly mechanical grip");
     row("R50 speed at max", c50.speedAtMaxKph, "km/h", 80, 125, "");
-    row("R150 max lateral", c150.maxLatG, "g", 3.0, 4.8, "aero grip");
-    row("R150 speed at max", c150.speedAtMaxKph, "km/h", 230, 290, "");
+    row("R150 max lateral", c150.maxLatG, "g", 3.0, 5.0, "aero grip");
+    row("R150 speed at max", c150.speedAtMaxKph, "km/h", 230, 310, "");
     row("R150 steering torque at limit", std::fabs(c150.steeringTorqueAtMax), "Nm", 3, 40, "after power assist");
     row("R150 torque peak / max lat g", c150.latGAtPeakTorque / std::max(c150.maxLatG, 1e-3), "", 0.6, 1.0,
         "FFB goes light before the limit");

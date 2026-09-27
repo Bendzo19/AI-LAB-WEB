@@ -34,6 +34,7 @@ void InputSystem::shutdown() {
         else if (d.joy) SDL_CloseJoystick(d.joy);
     }
     devices_.clear();
+    lastScan_ = 0;  // a new session rescans immediately
 }
 
 InputSystem::Device* InputSystem::find(const std::string& guid) {

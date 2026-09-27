@@ -9,7 +9,10 @@
 //   --demo                start with the robot driver (autopilot)
 //   --screenshot <png>    render, save a screenshot after --frames N frames, exit
 //   --frames <n>          (default 240)
-//   --camera <0|1|2>      cockpit / T-cam / chase
+//   --camera <n>          camera index (C cycles in game)
+//   --car <file>          car file relative to the data directory (skips the menu)
+//   --track <file>        track file relative to the data directory (skips the menu)
+//   --menu                show the main menu (screenshots of the menu)
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
@@ -19,10 +22,12 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <memory>
 #include <mutex>
 #include <thread>
 
 #include "f1sim/ai_driver.hpp"
+#include "content.hpp"
 #include "f1sim/session.hpp"
 #include "gl.hpp"
 #include "hud.hpp"
@@ -31,6 +36,7 @@
 #include "settings.hpp"
 #include "snapshot.hpp"
 #include "stb_image_write.h"
+#include "wheel_presets.hpp"
 
 using namespace app;
 
@@ -106,13 +112,13 @@ std::string timestamp() {
 // ---------------------------------------------------------------------------
 // Physics thread
 // ---------------------------------------------------------------------------
-void physicsMain(Shared& sh, f1sim::Session& session, InputSystem& input, bool startAutopilot) {
+void physicsMain(Shared& sh, f1sim::Session& session, InputSystem& input, bool startAutopilot, bool startPaused) {
     const f1sim::CarParams& car = session.vehicle().params();
     Settings cfg;
     int cfgVersion = -1;
     f1sim::FfbProcessor ffb;
     f1sim::AIDriver ai(&session.racingLine(), car, 0.96);
-    bool paused = false, autopilot = startAutopilot;
+    bool paused = startPaused, autopilot = startAutopilot;
     double steerKb = 0.0, throttleKb = 0.0, brakeKb = 0.0;
     double prevWheelAngle = 0.0, wheelVel = 0.0;
     double ffbCmd = 0.0, ffbTestUntil = -1.0;
@@ -303,10 +309,10 @@ void physicsMain(Shared& sh, f1sim::Session& session, InputSystem& input, bool s
 }  // namespace
 
 int main(int argc, char** argv) {
-    std::string dataArg, screenshotPath;
+    std::string dataArg, screenshotPath, carArg, trackArg;
     int screenshotFrames = 240;
     int cameraArg = -1;
-    bool demo = false, allApps = false;
+    bool demo = false, allApps = false, menuArg = false;
     for (int i = 1; i < argc; ++i) {
         if (!std::strcmp(argv[i], "--data") && i + 1 < argc) dataArg = argv[++i];
         else if (!std::strcmp(argv[i], "--demo")) demo = true;
@@ -314,6 +320,9 @@ int main(int argc, char** argv) {
         else if (!std::strcmp(argv[i], "--frames") && i + 1 < argc) screenshotFrames = std::atoi(argv[++i]);
         else if (!std::strcmp(argv[i], "--camera") && i + 1 < argc) cameraArg = std::atoi(argv[++i]);
         else if (!std::strcmp(argv[i], "--all-apps")) allApps = true;
+        else if (!std::strcmp(argv[i], "--car") && i + 1 < argc) carArg = argv[++i];
+        else if (!std::strcmp(argv[i], "--track") && i + 1 < argc) trackArg = argv[++i];
+        else if (!std::strcmp(argv[i], "--menu")) menuArg = true;
     }
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD)) {
@@ -357,13 +366,24 @@ int main(int argc, char** argv) {
         return 1;
     };
 
-    f1sim::CarParams car;
     std::string err;
-    std::vector<std::string> warnings;
-    if (!f1sim::CarParams::load(joinPath(dataDir, sh.settings.carFile), &car, &err, &warnings)) return fatal("Car data: " + err);
-    for (const auto& w : warnings) SDL_Log("car data warning: %s", w.c_str());
-    f1sim::Track track;
-    if (!f1sim::Track::load(joinPath(dataDir, sh.settings.trackFile), &track, &err)) return fatal("Track data: " + err);
+    Catalog catalog = scanContent(dataDir);
+    for (const auto& c : catalog.cars) if (!c.ok) SDL_Log("car %s: %s", c.file.c_str(), c.error.c_str());
+    for (const auto& t : catalog.tracks) if (!t.ok) SDL_Log("track %s: %s", t.file.c_str(), t.error.c_str());
+    if (!carArg.empty()) sh.settings.carFile = carArg;
+    if (!trackArg.empty()) sh.settings.trackFile = trackArg;
+    // Fall back to the first valid entries when the configured files are gone.
+    auto firstOk = [](const auto& list) {
+        for (size_t i = 0; i < list.size(); ++i) if (list[i].ok) return static_cast<int>(i);
+        return -1;
+    };
+    int menuCar = catalog.findCar(sh.settings.carFile), menuTrack = catalog.findTrack(sh.settings.trackFile);
+    if (menuCar < 0 || !catalog.cars[menuCar].ok) menuCar = firstOk(catalog.cars);
+    if (menuTrack < 0 || !catalog.tracks[menuTrack].ok) menuTrack = firstOk(catalog.tracks);
+    if (menuCar < 0) return fatal("No usable car in " + joinPath(dataDir, "cars"));
+    if (menuTrack < 0) return fatal("No usable track in " + joinPath(dataDir, "tracks"));
+    sh.settings.carFile = catalog.cars[menuCar].file;
+    sh.settings.trackFile = catalog.tracks[menuTrack].file;
 
     // ---- Window and OpenGL ----
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -393,24 +413,89 @@ int main(int argc, char** argv) {
     SDL_Log("OpenGL: %s / %s", reinterpret_cast<const char*>(gl::GetString(GL_RENDERER)),
             reinterpret_cast<const char*>(gl::GetString(GL_VERSION)));
 
-    f1sim::Session session(car, std::move(track));
-    session.vehicle().setAmbient(sh.settings.airTempC, sh.settings.trackTempC);
-    if (demo || !screenshotPath.empty()) {
-        // Rolling start on the racing line so the demo is immediately at speed.
-        const auto& line = session.racingLine();
-        const size_t idx = line.nearest(session.track().positionAt(session.track().wrapS(-200.0), 0.0));
-        session.resetRolling(line.speed[idx] * 0.9, 200.0, line.offset[idx]);
-    }
-
-    Renderer renderer;
-    if (!renderer.init(session.track(), car, session.racingLine(), dataDir, sh.settings.carModelFile, &err)) return fatal(err);
     Hud hud;
     if (!hud.init(&err)) return fatal(err);
-
     InputSystem input;
-    std::thread physics(physicsMain, std::ref(sh), std::ref(session), std::ref(input), demo || !screenshotPath.empty());
+
+    // ---- Session lifetime (rebuilt when the car or track changes) ----
+    f1sim::CarParams car;
+    std::unique_ptr<f1sim::Session> session;
+    Renderer renderer;
+    std::thread physics;
+    std::string loadedCar, loadedTrack;
+    auto stopSession = [&]() {
+        if (physics.joinable()) {
+            sh.running = false;
+            physics.join();
+        }
+        renderer.shutdown();
+        session.reset();
+    };
+    // Loads car + track and starts the physics thread. On a data error the
+    // previous session keeps running and `error` says why.
+    auto startSession = [&](const std::string& carFile, const std::string& trackFile, bool rolling, bool autopilot,
+                            bool paused, std::string* error) -> bool {
+        f1sim::CarParams newCar;
+        std::vector<std::string> warnings;
+        if (!f1sim::CarParams::load(joinPath(dataDir, carFile), &newCar, error, &warnings)) {
+            *error = "Car " + carFile + ": " + *error;
+            return false;
+        }
+        for (const auto& w : warnings) SDL_Log("car data warning: %s", w.c_str());
+        f1sim::Track track;
+        if (!f1sim::Track::load(joinPath(dataDir, trackFile), &track, error)) {
+            *error = "Track " + trackFile + ": " + *error;
+            return false;
+        }
+        stopSession();
+        car = newCar;
+        session = std::make_unique<f1sim::Session>(car, std::move(track));
+        session->vehicle().setAmbient(sh.settings.airTempC, sh.settings.trackTempC);
+        if (rolling) {
+            // Rolling start on the racing line so the demo is immediately at speed.
+            const auto& line = session->racingLine();
+            const size_t idx = line.nearest(session->track().positionAt(session->track().wrapS(-200.0), 0.0));
+            session->resetRolling(line.speed[idx] * 0.9, 200.0, line.offset[idx]);
+        }
+        const std::string modelCfg = sh.settings.carModelFile.empty() ? car.visual.modelConfig : sh.settings.carModelFile;
+        if (!renderer.init(session->track(), car, session->racingLine(), dataDir, modelCfg, error)) return false;
+        {
+            std::lock_guard<std::mutex> l(sh.snapMutex);
+            sh.snap = Snapshot{};
+            sh.snap.car = session->vehicle().state();
+            sh.snap.paused = paused;
+        }
+        {
+            std::lock_guard<std::mutex> l(sh.cmdMutex);
+            sh.cmds.clear();
+        }
+        sh.running = true;
+        physics = std::thread(physicsMain, std::ref(sh), std::ref(*session), std::ref(input), autopilot, paused);
+        loadedCar = carFile;
+        loadedTrack = trackFile;
+        SDL_Log("session: %s on %s", car.name.c_str(), session->track().name().c_str());
+        return true;
+    };
+
+    const bool autoStart = demo || !screenshotPath.empty() || !carArg.empty() || !trackArg.empty();
+    bool showMainMenu = !autoStart || menuArg;
+    if (!startSession(sh.settings.carFile, sh.settings.trackFile, demo || (!screenshotPath.empty() && !menuArg),
+                      demo || (!screenshotPath.empty() && !menuArg), showMainMenu, &err)) {
+        return fatal(err);
+    }
 
     bool showHelp = false, showSetup = false, sidebarPinned = false, sidebarOpen = false;
+    int menuFocus = 0;
+    std::string menuError;
+    // Guided controller setup: bind these one after another.
+    const BindTarget guidedTargets[] = {BindTarget::Steer, BindTarget::Throttle, BindTarget::Brake, BindTarget::Clutch,
+                                        BindTarget::ShiftUp, BindTarget::ShiftDown, BindTarget::Aero};
+    const int guidedCount = static_cast<int>(sizeof(guidedTargets) / sizeof(guidedTargets[0]));
+    int guidedIndex = -1;
+    bool guidedSeenActive = false;
+    Uint64 guidedRequested = 0;
+    std::string wheelName, presetHint;
+    Uint64 lastWheelScan = 0;
     MouseState mouse;
     Uint64 lastMouseMove = 0;
     Uint64 last = SDL_GetTicksNS();
@@ -422,6 +507,64 @@ int main(int argc, char** argv) {
         fn(sh.settings);
         sh.settings.save(settingsPath);
         sh.settingsVersion.fetch_add(1);
+    };
+    auto isPaused = [&]() {
+        std::lock_guard<std::mutex> l(sh.snapMutex);
+        return sh.snap.paused;
+    };
+    std::string menuStatus;
+    bool pendingDrive = false;
+    bool screenshotRequest = false;  // F12
+    const std::string screenshotDir = joinPath(userDir, "screenshots");  // load after one frame that shows "Loading"
+    auto drive = [&]() {
+        const auto& ce = catalog.cars[menuCar];
+        const auto& te = catalog.tracks[menuTrack];
+        if (!ce.ok || !te.ok) {
+            menuError = !ce.ok ? ce.name + ": " + ce.error : te.name + ": " + te.error;
+            return;
+        }
+        if (ce.file == loadedCar && te.file == loadedTrack) {
+            if (isPaused()) sh.push(Cmd::TogglePause);
+            showMainMenu = false;
+            menuError.clear();
+            return;
+        }
+        std::string e;
+        if (!startSession(ce.file, te.file, false, false, false, &e)) {
+            if (!session) std::exit(fatal(e));  // renderer failure after the old session was stopped
+            menuError = e;
+            return;
+        }
+        changeSettings([&](Settings& st) {
+            st.carFile = ce.file;
+            st.trackFile = te.file;
+        });
+        showMainMenu = false;
+        menuError.clear();
+    };
+    auto startGuided = [&]() {
+        guidedIndex = 0;
+        guidedSeenActive = false;
+        guidedRequested = SDL_GetTicks();
+        input.requestBind(guidedTargets[0]);
+    };
+    auto advanceGuided = [&]() {
+        guidedSeenActive = false;
+        guidedRequested = SDL_GetTicks();
+        if (++guidedIndex < guidedCount) {
+            input.requestBind(guidedTargets[guidedIndex]);
+        } else {
+            guidedIndex = -1;
+            input.cancelBind();
+        }
+    };
+    auto applyPresetFor = [&](const std::string& deviceName) {
+        if (const WheelPreset* p = findWheelPreset(deviceName)) {
+            changeSettings([&](Settings& st) { applyWheelPreset(*p, &st); });
+            sh.push(Cmd::ReopenFfb);
+            return true;
+        }
+        return false;
     };
 
     while (!quit) {
@@ -446,24 +589,61 @@ int main(int argc, char** argv) {
             if (e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP) {
                 const bool down = e.type == SDL_EVENT_KEY_DOWN;
                 const SDL_Keycode k = e.key.key;
-                if (k == SDLK_UP) sh.kUp = down;
-                if (k == SDLK_DOWN) sh.kDown = down;
-                if (k == SDLK_LEFT) sh.kLeft = down;
-                if (k == SDLK_RIGHT) sh.kRight = down;
-                if (!down || e.key.repeat) continue;
-                bool paused;
-                {
-                    std::lock_guard<std::mutex> l(sh.snapMutex);
-                    paused = sh.snap.paused;
+                const bool menuKeys = showMainMenu && !showSetup && !showHelp;
+                if (!menuKeys) {
+                    if (k == SDLK_UP) sh.kUp = down;
+                    if (k == SDLK_DOWN) sh.kDown = down;
+                    if (k == SDLK_LEFT) sh.kLeft = down;
+                    if (k == SDLK_RIGHT) sh.kRight = down;
                 }
+                if (!down) continue;
+                if (k == SDLK_F12 && !e.key.repeat) {
+                    screenshotRequest = true;
+                    continue;
+                }
+                if (menuKeys) {
+                    // Main menu navigation (repeat allowed for scrolling).
+                    int& sel = menuFocus == 0 ? menuCar : menuTrack;
+                    const int count = static_cast<int>(menuFocus == 0 ? catalog.cars.size() : catalog.tracks.size());
+                    if (k == SDLK_TAB) menuFocus ^= 1;
+                    else if (k == SDLK_LEFT) menuFocus = 0;
+                    else if (k == SDLK_RIGHT) menuFocus = 1;
+                    else if (k == SDLK_UP && count > 0) sel = (sel + count - 1) % count;
+                    else if (k == SDLK_DOWN && count > 0) sel = (sel + 1) % count;
+                    else if ((k == SDLK_RETURN || k == SDLK_KP_ENTER) && !e.key.repeat) pendingDrive = true;
+                    else if (k == SDLK_F1) showHelp = true;
+                    else if (k == SDLK_F2) showSetup = true;
+                    else if (k == SDLK_Q && !e.key.repeat) quit = true;
+                    continue;
+                }
+                if (e.key.repeat) continue;
+                const bool paused = isPaused();
                 if (showSetup) {
                     // Controller setup screen.
                     const BindTarget targets[] = {BindTarget::Steer, BindTarget::Throttle, BindTarget::Brake,
                                                   BindTarget::Clutch, BindTarget::ShiftUp, BindTarget::ShiftDown,
                                                   BindTarget::Aero, BindTarget::Reset, BindTarget::ErsMode};
-                    if (k >= SDLK_1 && k <= SDLK_9) input.requestBind(targets[k - SDLK_1]);
-                    else if (k == SDLK_ESCAPE && input.activeBind() != BindTarget::None) input.cancelBind();
+                    if (k >= SDLK_1 && k <= SDLK_9) {
+                        guidedIndex = -1;
+                        input.requestBind(targets[k - SDLK_1]);
+                    }
+                    else if ((k == SDLK_RETURN || k == SDLK_KP_ENTER) && input.activeBind() == BindTarget::None) startGuided();
+                    else if (k == SDLK_SPACE && guidedIndex >= 0) advanceGuided();
+                    else if (k == SDLK_ESCAPE && (input.activeBind() != BindTarget::None || guidedIndex >= 0)) {
+                        guidedIndex = -1;
+                        input.cancelBind();
+                    }
                     else if (k == SDLK_F2 || k == SDLK_ESCAPE) showSetup = false;
+                    else if (k == SDLK_W) {
+                        std::string dev;
+                        {
+                            std::lock_guard<std::mutex> l(sh.settingsMutex);
+                            dev = sh.settings.steer.deviceName;
+                        }
+                        if (!applyPresetFor(dev)) {
+                            for (const auto& d : input.devices()) if (applyPresetFor(d.name)) break;
+                        }
+                    }
                     else if (k == SDLK_COMMA) changeSettings([](Settings& s) { s.wheelRotationDeg = std::max(180.0, s.wheelRotationDeg - 30.0); });
                     else if (k == SDLK_PERIOD) changeSettings([](Settings& s) { s.wheelRotationDeg = std::min(2520.0, s.wheelRotationDeg + 30.0); });
                     else if (k == SDLK_B) changeSettings([](Settings& s) { s.brakeGamma = s.brakeGamma >= 2.4 ? 1.0 : s.brakeGamma + 0.2; });
@@ -478,6 +658,10 @@ int main(int argc, char** argv) {
                     else if (k == SDLK_I) changeSettings([](Settings& s) { s.ffb.invert = !s.ffb.invert; });
                     else if (k == SDLK_O) changeSettings([](Settings& s) { s.ffbEnabled = !s.ffbEnabled; });
                     else if (k == SDLK_T) sh.push(Cmd::FfbTest);
+                    continue;
+                }
+                if (showMainMenu) {  // help open over the menu
+                    if (k == SDLK_ESCAPE || k == SDLK_F1) showHelp = false;
                     continue;
                 }
                 if (paused && k == SDLK_Q) quit = true;
@@ -509,10 +693,16 @@ int main(int argc, char** argv) {
         }
 
         // Apply finished controller bindings.
+        bool guidedResult = false;
         if (auto r = input.takeBindResult()) {
+            const WheelPreset* preset = r->target == BindTarget::Steer ? findWheelPreset(r->axis.deviceName) : nullptr;
             changeSettings([&](Settings& s) {
                 switch (r->target) {
-                    case BindTarget::Steer: s.steer = r->axis; s.steer.full = r->axis.full; break;
+                    case BindTarget::Steer:
+                        s.steer = r->axis;
+                        // Known wheel: torque, rotation and filtering from its preset.
+                        if (preset) applyWheelPreset(*preset, &s);
+                        break;
                     case BindTarget::Throttle: s.throttle = r->axis; break;
                     case BindTarget::Brake: s.brake = r->axis; break;
                     case BindTarget::Clutch: s.clutch = r->axis; break;
@@ -525,6 +715,26 @@ int main(int argc, char** argv) {
                 }
             });
             if (r->target == BindTarget::Steer) sh.push(Cmd::ReopenFfb);
+            guidedResult = guidedIndex >= 0 && r->target == guidedTargets[guidedIndex];
+        }
+        // Guided setup: next step once the current one finished (bound or timed out).
+        if (guidedIndex >= 0) {
+            const bool active = input.activeBind() != BindTarget::None;
+            if (active) guidedSeenActive = true;
+            if (guidedResult || (!active && (guidedSeenActive || SDL_GetTicks() - guidedRequested > 1000))) advanceGuided();
+        }
+        // Known wheel connected? (for the "set it up" hint and the preset row)
+        if (SDL_GetTicks() - lastWheelScan > 500) {
+            lastWheelScan = SDL_GetTicks();
+            wheelName.clear();
+            presetHint.clear();
+            for (const auto& d : input.devices()) {
+                if (const WheelPreset* p = findWheelPreset(d.name)) {
+                    wheelName = p->label;
+                    presetHint = p->driverHint;
+                    break;
+                }
+            }
         }
 
         const Uint64 now = SDL_GetTicksNS();
@@ -544,7 +754,9 @@ int main(int argc, char** argv) {
         }
         int w = 0, h = 0;
         SDL_GetWindowSizeInPixels(window, &w, &h);
-        const auto cam = static_cast<CameraMode>(settingsCopy.camera % static_cast<int>(CameraMode::Count));
+        // The menu shows the car from outside.
+        const auto cam = showMainMenu ? CameraMode::ChaseNear
+                                      : static_cast<CameraMode>(settingsCopy.camera % static_cast<int>(CameraMode::Count));
         renderer.render(snap, w, h, cam, static_cast<float>(settingsCopy.fovDeg), dt);
 
         // Apps sidebar: pinned with F3, or while the mouse rests at the right edge.
@@ -555,8 +767,8 @@ int main(int argc, char** argv) {
         hc.snap = &snap;
         hc.settings = &settingsCopy;
         hc.car = &car;
-        hc.track = &session.track();
-        hc.trackName = session.track().name();
+        hc.track = &session->track();
+        hc.trackName = session->track().name();
         hc.cameraName = cameraName(cam);
         hc.modelStatus = renderer.modelStatus();
         hc.ffbDevice = input.ffbDevice();
@@ -566,42 +778,85 @@ int main(int argc, char** argv) {
         hc.binding = input.activeBind();
         if (showSetup) hc.devices = input.devices();
         hc.fps = fps;
+        hc.wheelName = wheelName;
+        hc.presetHint = presetHint;
+        if (guidedIndex >= 0) hc.guidedStep = std::to_string(guidedIndex + 1) + "/" + std::to_string(guidedCount);
+        hc.showMainMenu = showMainMenu;
+        hc.catalog = &catalog;
+        hc.menuCar = menuCar;
+        hc.menuTrack = menuTrack;
+        hc.menuFocus = menuFocus;
+        hc.menuError = menuError;
+        hc.menuStatus = menuStatus;
+        hc.version = "v" F1SIM_VERSION;
         const HudResult hr = hud.draw(hc, mouse, w, h);
         if (hr.layoutChanged) changeSettings([&](Settings& s) { hud.storeLayout(&s); });
+        if (hr.pickCar >= 0) {
+            menuCar = hr.pickCar;
+            menuFocus = 0;
+        }
+        if (hr.pickTrack >= 0) {
+            menuTrack = hr.pickTrack;
+            menuFocus = 1;
+        }
         switch (hr.action) {
             case MenuAction::Resume: sh.push(Cmd::TogglePause); break;
             case MenuAction::Restart: sh.push(Cmd::RestartPit); sh.push(Cmd::TogglePause); break;
             case MenuAction::Controls: showSetup = true; break;
             case MenuAction::Help: showHelp = true; break;
             case MenuAction::Quit: quit = true; break;
+            case MenuAction::MainMenu:
+                showMainMenu = true;
+                menuCar = std::max(0, catalog.findCar(loadedCar));
+                menuTrack = std::max(0, catalog.findTrack(loadedTrack));
+                break;
+            case MenuAction::Drive: pendingDrive = true; break;
             default: break;
         }
         // Hide the cursor while driving; show it when the mouse is used.
-        if (SDL_GetTicks() - lastMouseMove > 3000 && !snap.paused && !showSetup && !hc.showSidebar) SDL_HideCursor();
+        if (SDL_GetTicks() - lastMouseMove > 3000 && !snap.paused && !showSetup && !hc.showSidebar && !showMainMenu) SDL_HideCursor();
         else SDL_ShowCursor();
 
         ++frame;
-        if (!screenshotPath.empty() && frame >= screenshotFrames) {
+        auto saveScreenshot = [&](const std::string& path) {
             std::vector<unsigned char> px(static_cast<size_t>(w) * h * 3);
             gl::PixelStorei(GL_PACK_ALIGNMENT, 1);
             gl::ReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, px.data());
             stbi_flip_vertically_on_write(1);
-            if (!stbi_write_png(screenshotPath.c_str(), w, h, 3, px.data(), w * 3)) SDL_Log("screenshot failed");
-            else SDL_Log("screenshot saved: %s", screenshotPath.c_str());
+            if (!stbi_write_png(path.c_str(), w, h, 3, px.data(), w * 3)) SDL_Log("screenshot failed: %s", path.c_str());
+            else SDL_Log("screenshot saved: %s", path.c_str());
+        };
+        if (screenshotRequest) {
+            screenshotRequest = false;
+            SDL_CreateDirectory(screenshotDir.c_str());
+            saveScreenshot(joinPath(screenshotDir, "f1sim_" + timestamp() + "_" + std::to_string(frame) + ".png"));
+        }
+        if (!screenshotPath.empty() && frame >= screenshotFrames) {
+            saveScreenshot(screenshotPath);
             quit = true;
         }
         SDL_GL_SwapWindow(window);
         if (!screenshotPath.empty()) SDL_Delay(1);
+
+        // Content changes load between frames; one frame shows "Loading" first.
+        if (pendingDrive) {
+            const bool sameContent = catalog.cars[menuCar].file == loadedCar && catalog.tracks[menuTrack].file == loadedTrack;
+            if (sameContent || !menuStatus.empty()) {
+                pendingDrive = false;
+                menuStatus.clear();
+                drive();
+            } else {
+                menuStatus = "Loading " + catalog.cars[menuCar].name + " / " + catalog.tracks[menuTrack].name + " ...";
+            }
+        }
     }
 
-    sh.running = false;
-    physics.join();
+    stopSession();
     {
         std::lock_guard<std::mutex> l(sh.settingsMutex);
         sh.settings.save(settingsPath);
     }
     hud.shutdown();
-    renderer.shutdown();
     SDL_GL_DestroyContext(ctx);
     SDL_DestroyWindow(window);
     SDL_Quit();

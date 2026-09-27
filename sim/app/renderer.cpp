@@ -165,7 +165,7 @@ constexpr Rgba kKerbWhite{{235, 235, 235, 255}};
 constexpr Rgba kGrass{{78, 128, 58, 255}};
 constexpr Rgba kGrassFar{{68, 112, 52, 255}};
 constexpr Rgba kBarrier{{35, 35, 38, 255}};
-constexpr Rgba kLivery{{109, 92, 230, 255}};   // AI LAB brand purple
+constexpr Rgba kBrandPurple{{109, 92, 230, 255}};   // AI LAB brand (gantry)
 constexpr Rgba kCarbon{{28, 28, 32, 255}};
 constexpr Rgba kWhite{{230, 230, 235, 255}};
 constexpr Rgba kTyre{{22, 22, 24, 255}};
@@ -218,6 +218,14 @@ bool Renderer::buildShaders(std::string* error) {
 
 bool Renderer::init(const f1sim::Track& track, const f1sim::CarParams& car, const f1sim::RacingLine& line,
                     const std::string& dataDir, const std::string& modelConfig, std::string* error) {
+    // The renderer is re-initialised when the car or track changes.
+    tvCams_.clear();
+    tvCurrent_ = -1;
+    chaseInit_ = false;
+    headOffset_ = {0, 0, 0};
+    bodyIncludesWheels_ = false;
+    mirrorRightWheels_ = true;
+    modelStatus_ = "built-in primitive car";
     car_ = car;
     if (!buildShaders(error)) return false;
     buildTrack(track, line);
@@ -332,7 +340,28 @@ void Renderer::buildTrack(const f1sim::Track& track, const f1sim::RacingLine& li
         const float zTop = std::max(l.z, r.z) + 7.0f;
         const Vec3f mn{std::min(l.x, r.x) - 0.5f, std::min(l.y, r.y) - 0.5f, zTop};
         const Vec3f mx{std::max(l.x, r.x) + 0.5f, std::max(l.y, r.y) + 0.5f, zTop + 1.6f};
-        sb.addBox(mn, mx, kLivery.c);
+        sb.addBox(mn, mx, kBrandPurple.c);
+    }
+
+    // Straight-mode (DRS) activation points: a line across the track and a
+    // green board on each side.
+    const Rgba kDrsGreen{{40, 190, 90, 255}};
+    for (const auto& z : track.aeroZones()) {
+        const double s0 = track.wrapS(z.first);
+        const auto ts = track.sampleAt(s0);
+        const Section a{s0, ts}, c{track.wrapS(s0 + 0.4), track.sampleAt(track.wrapS(s0 + 0.4))};
+        const Vec3f p0 = point(a, -ts.widthRight, 0.01), p1 = point(a, ts.widthLeft, 0.01),
+                    p2 = point(c, c.t.widthLeft, 0.01), p3 = point(c, -c.t.widthRight, 0.01);
+        tb.addQuad(p0, p3, p2, p1, {0, 0, 1}, kLine.c);
+        const Vec3f fwd{float(std::cos(ts.heading)), float(std::sin(ts.heading)), 0};
+        const Vec3f lat{-fwd.y, fwd.x, 0};
+        for (double d : {ts.widthLeft + ts.kerbLeft + 2.0, -ts.widthRight - ts.kerbRight - 2.0}) {
+            const Vec3f p = point(a, d);
+            sb.addBox(p + Vec3f{-0.05f, -0.05f, 0}, p + Vec3f{0.05f, 0.05f, 1.2f}, kCarbon.c);
+            const Vec3f c0 = p + Vec3f{0, 0, 1.2f};
+            const Vec3f q0 = c0 - lat * 0.9f, q1 = c0 + lat * 0.9f, q2 = q1 + Vec3f{0, 0, 0.9f}, q3 = q0 + Vec3f{0, 0, 0.9f};
+            sb.addQuad(q0 - fwd * 0.02f, q1 - fwd * 0.02f, q2 - fwd * 0.02f, q3 - fwd * 0.02f, fwd * -1.0f, kDrsGreen.c);
+        }
     }
 
     // Braking boards (3/2/1 stripes = 300/200/100 m) before the big stops.
@@ -392,6 +421,13 @@ void Renderer::buildTrack(const f1sim::Track& track, const f1sim::RacingLine& li
 void Renderer::buildCar(const f1sim::CarParams& car, const std::string& dataDir, const std::string& modelConfig) {
     const float fx = float(car.front.x), rx = float(car.rear.x), cg = float(car.chassis.cgHeight);
     const float floorZ = -cg + 0.035f;
+    // Livery colour from the car file ([visual] livery_rgb).
+    Rgba livery{};
+    for (int k = 0; k < 3; ++k) livery.c[k] = static_cast<uint8_t>(f1sim::clamp(car.visual.livery[k], 0.0f, 1.0f) * 255.0f + 0.5f);
+    livery.c[3] = 255;
+    const Rgba& kLivery = livery;
+    // Front wing span follows the car width (2.0 m for 2022-25, 1.9 m for 2026).
+    const float wing = 0.5f * float(car.chassis.width) - 0.05f;
     MeshBuilder b;
     // Floor and diffuser.
     b.addBox({rx - 0.55f, -0.8f, floorZ}, {fx - 0.45f, 0.8f, floorZ + 0.03f}, kCarbon.c);
@@ -401,9 +437,9 @@ void Renderer::buildCar(const f1sim::CarParams& car, const std::string& dataDir,
     b.addBox({1.2f, -0.17f, floorZ + 0.08f}, {fx + 0.95f, 0.17f, 0.12f}, kLivery.c);
     b.addBox({fx + 0.95f, -0.12f, floorZ + 0.08f}, {fx + 1.1f, 0.12f, 0.02f}, kWhite.c);
     // Front wing: main plane, flaps, endplates.
-    b.addBox({fx + 0.55f, -0.95f, -cg + 0.07f}, {fx + 1.05f, 0.95f, -cg + 0.10f}, kCarbon.c);
-    b.addBox({fx + 0.50f, -0.95f, -cg + 0.12f}, {fx + 0.72f, 0.95f, -cg + 0.15f}, kLivery.c);
-    for (float s : {-1.0f, 1.0f}) b.addBox({fx + 0.5f, s * 0.95f - 0.01f, -cg + 0.05f}, {fx + 1.05f, s * 0.95f + 0.01f, -cg + 0.28f}, kWhite.c);
+    b.addBox({fx + 0.55f, -wing, -cg + 0.07f}, {fx + 1.05f, wing, -cg + 0.10f}, kCarbon.c);
+    b.addBox({fx + 0.50f, -wing, -cg + 0.12f}, {fx + 0.72f, wing, -cg + 0.15f}, kLivery.c);
+    for (float s : {-1.0f, 1.0f}) b.addBox({fx + 0.5f, s * wing - 0.01f, -cg + 0.05f}, {fx + 1.05f, s * wing + 0.01f, -cg + 0.28f}, kWhite.c);
     // Sidepods.
     b.addBox({-0.95f, -0.78f, floorZ + 0.02f}, {0.65f, -0.40f, 0.10f}, kLivery.c);
     b.addBox({-0.95f, 0.40f, floorZ + 0.02f}, {0.65f, 0.78f, 0.10f}, kLivery.c);

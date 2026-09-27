@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(f1sim VERSION 0.1.0 LANGUAGES C CXX)
+project(f1sim VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -48,7 +48,9 @@ set(F1SIM_SOURCE_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data")
 if(F1SIM_BUILD_TESTS)
   enable_testing()
   add_executable(f1sim_tests tests/test_main.cpp tests/test_tyre.cpp tests/test_track.cpp
-                             tests/test_vehicle.cpp tests/test_misc.cpp)
+                             tests/test_vehicle.cpp tests/test_misc.cpp tests/test_app.cpp
+                             app/settings.cpp app/wheel_presets.cpp)
+  target_include_directories(f1sim_tests PRIVATE app)
   target_link_libraries(f1sim_tests PRIVATE f1sim_core)
   target_compile_options(f1sim_tests PRIVATE ${F1SIM_WARNINGS})
   target_compile_definitions(f1sim_tests PRIVATE F1SIM_DATA_DIR="${F1SIM_SOURCE_DATA_DIR}")
@@ -85,11 +87,13 @@ if(F1SIM_BUILD_APP)
     app/hud.cpp
     app/input.cpp
     app/settings.cpp
+    app/wheel_presets.cpp
+    app/content.cpp
     app/third_party_impl.cpp)
   target_include_directories(f1sim PRIVATE app third_party/stb third_party/cgltf)
   target_link_libraries(f1sim PRIVATE f1sim_core SDL3::SDL3)
   target_compile_options(f1sim PRIVATE ${F1SIM_WARNINGS})
-  target_compile_definitions(f1sim PRIVATE F1SIM_DATA_DIR="${F1SIM_SOURCE_DATA_DIR}")
+  target_compile_definitions(f1sim PRIVATE F1SIM_DATA_DIR="${F1SIM_SOURCE_DATA_DIR}" F1SIM_VERSION="${PROJECT_VERSION}")
   # Ship the data folder next to the executable so the build is portable.
   add_custom_command(TARGET f1sim POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${F1SIM_SOURCE_DATA_DIR}" "$<TARGET_FILE_DIR:f1sim>/data")

@@ -28,7 +28,9 @@ jobs:
         run: sim/build/Release/f1sim_tests.exe
 
       - name: Validation benchmark
-        run: sim/build/Release/f1sim_bench.exe sim/data/cars/f1_2026_generic.ini sim/data/tracks/test_circuit.trk
+        run: |
+          sim/build/Release/f1sim_bench.exe sim/data/cars/f1_2025_generic.ini sim/data/tracks/red_bull_ring.csv --laps 1
+          sim/build/Release/f1sim_bench.exe sim/data/cars/f1_2026_generic.ini sim/data/tracks/test_circuit.trk
 
       - name: Package
         shell: pwsh
@@ -40,12 +42,44 @@ jobs:
           Copy-Item sim/README.md dist/f1sim/
           Copy-Item -Recurse sim/docs dist/f1sim/docs
           Copy-Item -Recurse sim/scripts dist/f1sim/scripts
+          Copy-Item sim/docs/QUICKSTART_SK.txt dist/f1sim/START_TU.txt
 
       - uses: actions/upload-artifact@v4
         with:
           name: f1sim-windows-x64
           path: dist/f1sim
           retention-days: 30
+
+  release:
+    # Stable download link for testers, rebuilt on every push:
+    # https://github.com/<owner>/<repo>/releases/download/f1sim-latest/f1sim-windows-x64.zip
+    name: Publish f1sim-latest pre-release
+    needs: [windows, linux]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: f1sim-release
+      cancel-in-progress: true
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: f1sim-windows-x64
+          path: f1sim
+      - name: Zip
+        run: zip -r -q f1sim-windows-x64.zip f1sim
+      - name: Replace the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete f1sim-latest --cleanup-tag --yes || true
+          gh release create f1sim-latest f1sim-windows-x64.zip \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "f1sim - latest test build" \
+            --notes "Automatic Windows x64 build of ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Unzip, run f1sim.exe (see START_TU.txt)."
 
   linux:
     name: Linux core tests
