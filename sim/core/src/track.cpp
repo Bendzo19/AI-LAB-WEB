@@ -78,12 +78,28 @@ bool Track::loadCsv(const std::string& path, Track* out, std::string* error) {
         return false;
     }
     std::vector<RawPoint> pts;
+    std::vector<std::pair<double, double>> zones;
+    std::string name;
     std::string line;
     int lineNo = 0;
     while (std::getline(in, line)) {
         ++lineNo;
         line = trim(line);
-        if (line.empty() || line[0] == '#') continue;
+        if (line.empty()) continue;
+        if (line[0] == '#') {
+            // Optional directives in comments: "# name <text>", "# aero_zone <start_s> <end_s>".
+            std::stringstream cs(line.substr(1));
+            std::string key;
+            cs >> key;
+            if (key == "name") {
+                std::getline(cs, name);
+                name = trim(name);
+            } else if (key == "aero_zone") {
+                double a, b;
+                if (cs >> a >> b) zones.push_back({a, b});
+            }
+            continue;
+        }
         std::stringstream ss(line);
         std::string cell;
         std::vector<double> v;
@@ -104,8 +120,9 @@ bool Track::loadCsv(const std::string& path, Track* out, std::string* error) {
     }
     Track t;
     const auto slash = path.find_last_of("/\\");
-    t.name_ = path.substr(slash == std::string::npos ? 0 : slash + 1);
+    t.name_ = name.empty() ? path.substr(slash == std::string::npos ? 0 : slash + 1) : name;
     if (!t.buildFromPolyline(pts, 0.0, error)) return false;
+    if (!zones.empty()) t.aeroZones_ = zones;
     *out = std::move(t);
     return true;
 }
@@ -121,6 +138,7 @@ bool Track::loadTrk(const std::string& path, Track* out, std::string* error) {
     std::string name = "track";
     double width = 14.0, startOffset = 0.0, runoff = 25.0;
     std::vector<double> elev;  // amp1, phase1, amp2, phase2 (phases in cycles)
+    std::vector<std::pair<double, double>> zones;
     std::string line;
     int lineNo = 0;
     auto fail = [&](const std::string& msg) {
@@ -145,6 +163,10 @@ bool Track::loadTrk(const std::string& path, Track* out, std::string* error) {
             if (!(ss >> runoff) || runoff < 3.0) return fail("runoff must be >= 3 m");
         } else if (cmd == "start_offset") {
             if (!(ss >> startOffset)) return fail("start_offset needs a number");
+        } else if (cmd == "aero_zone") {
+            double a, b;
+            if (!(ss >> a >> b)) return fail("aero_zone needs: start_s end_s (lap distance from the line)");
+            zones.push_back({a, b});
         } else if (cmd == "elevation") {
             double v;
             while (ss >> v) elev.push_back(v);
@@ -269,6 +291,7 @@ bool Track::loadTrk(const std::string& path, Track* out, std::string* error) {
         smp.runoffLeft = runoff;
         smp.runoffRight = runoff;
     }
+    if (!zones.empty()) t.aeroZones_ = zones;
     t.buildGrid();
     *out = std::move(t);
     return true;
@@ -367,6 +390,7 @@ bool Track::buildFromPolyline(const std::vector<RawPoint>& in, double startS, st
         for (int k = 0; k < count; ++k) samples_[k].curvature = c[k];
     }
     autoKerbs();
+    autoAeroZones();
     buildGrid();
     return true;
 }
@@ -427,6 +451,7 @@ void Track::buildGrid() {
             }
         }
     }
+    buildHeightGrid();
 }
 
 Track Track::flatPad() {
@@ -449,6 +474,38 @@ double Track::deltaS(double a, double b) const {
     if (d > length_ * 0.5) d -= length_;
     if (d <= -length_ * 0.5) d += length_;
     return d;
+}
+
+bool Track::inAeroZone(double s) const {
+    if (pad_) return true;
+    s = wrapS(s);
+    for (const auto& z : aeroZones_) {
+        if (z.first <= z.second ? (s >= z.first && s < z.second) : (s >= z.first || s < z.second)) return true;
+    }
+    return false;
+}
+
+void Track::autoAeroZones(double minLength) {
+    aeroZones_.clear();
+    const int n = static_cast<int>(samples_.size());
+    if (n == 0) return;
+    // Start scanning from a curved sample so a straight across the lap line is one run.
+    int start = 0;
+    for (int i = 0; i < n; ++i) {
+        if (std::fabs(samples_[i].curvature) > 1.0 / 600.0) { start = i; break; }
+    }
+    int runStart = -1;
+    for (int k = 1; k <= n; ++k) {
+        const int i = (start + k) % n;
+        const bool straight = std::fabs(samples_[i].curvature) < 1.0 / 600.0 && k < n;
+        if (straight && runStart < 0) runStart = i;
+        if (!straight && runStart >= 0) {
+            const double len = wrapS(samples_[i].s - samples_[runStart].s);
+            // Activation begins a little after the corner exit, like real DRS lines.
+            if (len >= minLength) aeroZones_.push_back({wrapS(samples_[runStart].s + 60.0), samples_[i].s});
+            runStart = -1;
+        }
+    }
 }
 
 TrackSample Track::sampleAt(double s) const {
@@ -503,13 +560,9 @@ double Track::bumps(double s, double d, Surface surf) const {
     return z * bumpScale_;
 }
 
-double Track::heightAt(double s, double d, Surface* surface) const {
-    if (pad_) {
-        if (surface) *surface = Surface::Asphalt;
-        return 0.0;
-    }
+double Track::surfaceOffset(double s, double d, Surface* surface) const {
     const TrackSample t = sampleAt(s);
-    double z = t.pos.z + std::tan(t.bank) * d;
+    double z = std::tan(t.bank) * d;
     const double edge = d >= 0.0 ? t.widthLeft : t.widthRight;
     const double kerb = d >= 0.0 ? t.kerbLeft : t.kerbRight;
     const double ad = std::fabs(d);
@@ -530,6 +583,67 @@ double Track::heightAt(double s, double d, Surface* surface) const {
     }
     if (surface) *surface = surf;
     return z + bumps(s, d, surf);
+}
+
+void Track::buildHeightGrid() {
+    hg_.clear();
+    if (pad_ || samples_.empty()) return;
+    // Gaussian splat of the centre-line heights: exact on straight grades,
+    // smooth everywhere, and legs of a hairpin (>12 m apart) do not mix.
+    constexpr double kSigma = 4.0, kReach = 45.0;
+    double minX = 1e18, minY = 1e18, maxX = -1e18, maxY = -1e18;
+    for (const auto& p : samples_) {
+        minX = std::min(minX, p.pos.x); maxX = std::max(maxX, p.pos.x);
+        minY = std::min(minY, p.pos.y); maxY = std::max(maxY, p.pos.y);
+    }
+    const double margin = kReach + 5.0;
+    hgMinX_ = minX - margin;
+    hgMinY_ = minY - margin;
+    hgW_ = static_cast<int>(std::ceil((maxX - minX + 2 * margin) / hgCell_)) + 1;
+    hgH_ = static_cast<int>(std::ceil((maxY - minY + 2 * margin) / hgCell_)) + 1;
+    std::vector<double> wz(static_cast<size_t>(hgW_) * hgH_, 0.0), ww(wz.size(), 0.0);
+    const int reach = static_cast<int>(std::ceil(kReach / hgCell_));
+    for (const auto& p : samples_) {
+        const int cx = static_cast<int>((p.pos.x - hgMinX_) / hgCell_);
+        const int cy = static_cast<int>((p.pos.y - hgMinY_) / hgCell_);
+        for (int gy = std::max(0, cy - reach); gy <= std::min(hgH_ - 1, cy + reach); ++gy) {
+            for (int gx = std::max(0, cx - reach); gx <= std::min(hgW_ - 1, cx + reach); ++gx) {
+                const double dx = hgMinX_ + gx * hgCell_ - p.pos.x, dy = hgMinY_ + gy * hgCell_ - p.pos.y;
+                const double d2 = dx * dx + dy * dy;
+                if (d2 > kReach * kReach) continue;
+                // Far from the track a weak long-range term keeps the terrain continuous.
+                const double w = std::exp(-d2 / (2.0 * kSigma * kSigma)) + 1e-9 * std::exp(-std::sqrt(d2) / 10.0);
+                const size_t k = static_cast<size_t>(gy) * hgW_ + gx;
+                wz[k] += w * p.pos.z;
+                ww[k] += w;
+            }
+        }
+    }
+    const double fallback = samples_.front().pos.z;
+    hg_.resize(wz.size());
+    for (size_t k = 0; k < wz.size(); ++k) hg_[k] = static_cast<float>(ww[k] > 0.0 ? wz[k] / ww[k] : fallback);
+}
+
+double Track::baseHeight(double x, double y) const {
+    if (hg_.empty()) return samples_.empty() ? 0.0 : samples_.front().pos.z;
+    const double fx = clamp((x - hgMinX_) / hgCell_, 0.0, hgW_ - 1.001);
+    const double fy = clamp((y - hgMinY_) / hgCell_, 0.0, hgH_ - 1.001);
+    const int ix = static_cast<int>(fx), iy = static_cast<int>(fy);
+    const double tx = fx - ix, ty = fy - iy;
+    const size_t k = static_cast<size_t>(iy) * hgW_ + ix;
+    const double a = hg_[k], b = hg_[k + 1], c = hg_[k + hgW_], d = hg_[k + hgW_ + 1];
+    return lerp(lerp(a, b, tx), lerp(c, d, tx), ty);
+}
+
+double Track::heightAt(double s, double d, Surface* surface) const {
+    if (pad_) {
+        if (surface) *surface = Surface::Asphalt;
+        return 0.0;
+    }
+    const TrackSample t = sampleAt(s);
+    const double base = hg_.empty() ? t.pos.z
+                                    : baseHeight(t.pos.x - std::sin(t.heading) * d, t.pos.y + std::cos(t.heading) * d);
+    return base + surfaceOffset(s, d, surface);
 }
 
 GroundHit Track::query(const Vec3& p, int hint) const {
@@ -560,9 +674,12 @@ GroundHit Track::query(const Vec3& p, int hint) const {
         const double lim = d >= 0.0 ? lerp(a.widthLeft + a.runoffLeft, b.widthLeft + b.runoffLeft, t)
                                     : lerp(a.widthRight + a.runoffRight, b.widthRight + b.runoffRight, t);
         if (std::fabs(d) > lim + kWallMargin) return;
-        // Prefer the closest segment; vertical distance disambiguates crossings.
+        // Closest segment wins. Height only matters where the lap crosses
+        // itself (bridges): a small penalty here would bias the projection
+        // along steep slopes and misplace the ground by centimetres.
         const double cz = lerp(a.pos.z, b.pos.z, t);
-        const double score = dist + 4.0 * std::fabs(p.z - cz);
+        const double dz = std::fabs(p.z - cz);
+        const double score = dist + (dz > 3.0 ? 4.0 * (dz - 3.0) : 0.0);
         if (score < bestScore) {
             bestScore = score;
             best = i;
@@ -596,14 +713,18 @@ GroundHit Track::query(const Vec3& p, int hint) const {
     const double s = wrapS(samples_[best].s + bestT * spacing_);
     const double d = bestD;
     Surface surf;
-    const double z = heightAt(s, d, &surf);
-    // Surface gradient in lap coordinates -> world normal.
+    const double off = surfaceOffset(s, d, &surf);
+    const double z = baseHeight(p.x, p.y) + off;
+    // Gradient: smooth base field in x/y plus the surface detail in lap coordinates.
+    const double eb = 0.5;
+    const double bx = (baseHeight(p.x + eb, p.y) - baseHeight(p.x - eb, p.y)) / (2.0 * eb);
+    const double by = (baseHeight(p.x, p.y + eb) - baseHeight(p.x, p.y - eb)) / (2.0 * eb);
     const double e = 0.05;
-    const double dzds = (heightAt(s + e, d) - heightAt(s - e, d)) / (2.0 * e);
-    const double dzdd = (heightAt(s, d + e) - heightAt(s, d - e)) / (2.0 * e);
+    const double dods = (surfaceOffset(s + e, d, nullptr) - surfaceOffset(s - e, d, nullptr)) / (2.0 * e);
+    const double dodd = (surfaceOffset(s, d + e, nullptr) - surfaceOffset(s, d - e, nullptr)) / (2.0 * e);
     const double h = headingAt(s);
-    const double gx = dzds * std::cos(h) - dzdd * std::sin(h);
-    const double gy = dzds * std::sin(h) + dzdd * std::cos(h);
+    const double gx = bx + dods * std::cos(h) - dodd * std::sin(h);
+    const double gy = by + dods * std::sin(h) + dodd * std::cos(h);
     const TrackSample ts = sampleAt(s);
 
     hit.height = z;

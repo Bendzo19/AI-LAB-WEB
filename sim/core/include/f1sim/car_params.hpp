@@ -93,6 +93,10 @@ struct AeroParams {
     double rakeBalanceSensitivity = 1.5;           // front balance change per m of extra rake
     double yawSensitivity = 8.0;                   // relative ClA loss per rad^2 of sideslip
     double copHeight = 0.05;                       // drag application height above CoG [m]
+    // Straight-line mode (2025: DRS, 2026: active aero X-mode).
+    bool straightModeZonesOnly = false;            // may only be opened inside the track's zones
+    std::string straightModeLabel = "X-MODE";
+    std::string cornerModeLabel = "Z-MODE";
     double frontFloorX = 1.2, rearFloorX = -1.4;   // ride-height sensor points [m]
 };
 
@@ -125,6 +129,8 @@ struct PowertrainParams {
     double harvestPerLap = 8.5e6;    // [J]
     double mgukEfficiency = 0.95;
     double coastHarvestPower = 120000.0;  // off-throttle harvesting [W]
+    double deployPerLap = 1.0e12;    // [J] MGU-K deployment allowance per lap (2025: 4 MJ)
+    double mguhHarvestPower = 0.0;   // [W] exhaust-energy recovery at full throttle (2014-2025 MGU-H)
 
     double fuelMass = 10.0;          // [kg] at start
     double fuelLhv = 43.0e6;         // [J/kg]
@@ -160,6 +166,11 @@ struct ChassisParams {
     double length = 5.4, width = 1.9;  // bounding box for walls/visuals
 };
 
+struct VisualParams {
+    float livery[3] = {0.43f, 0.36f, 0.90f};  // primary colour of the built-in car (0..1)
+    std::string modelConfig = "models/car_model.ini";
+};
+
 struct CarParams {
     std::string name = "unnamed";
     ChassisParams chassis;
@@ -168,6 +179,8 @@ struct CarParams {
     PowertrainParams powertrain;
     BrakeParams brakes;
     SteeringParams steering;
+    VisualParams visual;
+    std::string description;
 
     // Loads a car file. Missing keys are errors; unknown keys are reported
     // through `warnings` so typos in data files cannot go unnoticed.

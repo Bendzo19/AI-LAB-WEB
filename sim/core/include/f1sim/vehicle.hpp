@@ -72,6 +72,7 @@ struct PowertrainState {
     double mgukPower = 0.0;       // [W] mechanical, + = deploy
     double soc = 4.0e6;           // [J] within the battery window
     double lapHarvest = 0.0;      // [J] harvested since the last lap line
+    double lapDeploy = 0.0;       // [J] deployed since the last lap line
     double fuelMass = 10.0;       // [kg]
     bool revLimiter = false;
 };
@@ -93,6 +94,7 @@ struct VehicleState {
 
     double aeroMode = 0.0;        // 0 = corner (Z), 1 = straight (X), continuous during transition
     bool aeroStraightRequested = false;
+    bool aeroZone = true;         // straight mode may be opened here (DRS zone)
     double downforceFront = 0.0, downforceRear = 0.0, drag = 0.0;
     double rideHeightFront = 0.0, rideHeightRear = 0.0;
     bool floorContact = false;
@@ -124,7 +126,7 @@ public:
     void setAmbient(double airC, double trackC) { airTemp_ = airC; trackTemp_ = trackC; }
     void setTyreTemperatures(double surfaceC, double carcassC);
     // Called by lap timing when crossing the line (per-lap harvest allowance).
-    void onLapLine() { st_.pt.lapHarvest = 0.0; }
+    void onLapLine() { st_.pt.lapHarvest = 0.0; st_.pt.lapDeploy = 0.0; }
 
     // Body-frame position of each wheel centre at static ride height.
     Vec3 wheelBodyPosition(int i) const;

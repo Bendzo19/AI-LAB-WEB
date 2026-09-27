@@ -70,6 +70,13 @@ public:
     // Signed distance a -> b along the lap in (-L/2, L/2].
     double deltaS(double a, double b) const;
 
+    // Straight-line mode (DRS / X-mode) activation zones as [start, end) in lap distance.
+    const std::vector<std::pair<double, double>>& aeroZones() const { return aeroZones_; }
+    bool inAeroZone(double s) const;
+    void setAeroZones(std::vector<std::pair<double, double>> z) { aeroZones_ = std::move(z); }
+    // Detects long straights: runs of low curvature longer than `minLength`.
+    void autoAeroZones(double minLength = 350.0);
+
     // Micro-texture amplitude multiplier (1 = default); 0 disables bumps.
     void setBumpScale(double k) { bumpScale_ = k; }
 
@@ -79,6 +86,12 @@ public:
 
 private:
     void buildGrid();
+    // Smooth elevation field over the whole area (continuous in x/y, also
+    // inside tight hairpins where lap coordinates fold over).
+    void buildHeightGrid();
+    double baseHeight(double x, double y) const;
+    // Kerb / grass / banking / micro-texture relative to the base surface.
+    double surfaceOffset(double s, double d, Surface* surface) const;
     void autoKerbs();
     double bumps(double s, double d, Surface surf) const;
 
@@ -88,11 +101,15 @@ private:
     double spacing_ = 1.0;
     bool pad_ = false;
     double bumpScale_ = 1.0;
+    std::vector<std::pair<double, double>> aeroZones_;
 
     // Uniform grid of segment indices.
     double gridMinX_ = 0.0, gridMinY_ = 0.0, cell_ = 25.0;
     int gridW_ = 0, gridH_ = 0;
     std::vector<std::vector<int>> grid_;
+    double hgMinX_ = 0.0, hgMinY_ = 0.0, hgCell_ = 2.0;
+    int hgW_ = 0, hgH_ = 0;
+    std::vector<float> hg_;
 };
 
 }  // namespace f1sim

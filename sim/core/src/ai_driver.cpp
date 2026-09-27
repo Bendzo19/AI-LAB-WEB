@@ -59,8 +59,14 @@ DriverInputs AIDriver::update(const VehicleState& s, double dt) {
     // Threshold braking: the pedal ceiling drops quickly while any tyre
     // locks and recovers otherwise, like a driver modulating at the limit.
     double lock = 0.0;
-    for (const auto& w : s.wheels) lock = std::min(lock, w.slipRatio);
-    brakeCeiling_ = clamp(brakeCeiling_ + dt * (lock < -0.12 ? -10.0 : 3.0), 0.05, 1.0);
+    // A lifted or barely loaded wheel (inside front in a hairpin) stops and
+    // spins freely; it carries no braking force, so it does not count.
+    for (const auto& w : s.wheels) {
+        if (w.fz > 800.0) lock = std::min(lock, w.slipRatio);
+    }
+    if (lock < -0.12) brakeCeiling_ = std::min(brakeCeiling_, brake) - 4.0 * dt;
+    else brakeCeiling_ += 3.0 * dt;
+    brakeCeiling_ = clamp(brakeCeiling_, 0.2, 1.0);
     brake = std::min(brake, brakeCeiling_);
     in.throttle = throttle;
     in.brake = brake;

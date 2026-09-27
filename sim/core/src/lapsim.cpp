@@ -127,6 +127,11 @@ void computeSpeedProfile(RacingLine& line, const CarParams& car, const LapSimOpt
         return clamp(lat / latMax, 0.0, 1.0);
     };
     auto seg = [&](int i) { return length(line.points[(i + 1) % n] - line.points[i]); };
+    // Grade of the segment i -> i+1 (+ = uphill): gravity along the road.
+    auto grade = [&](int i) {
+        const Vec3 d = line.points[(i + 1) % n] - line.points[i];
+        return d.z / std::max(std::hypot(d.x, d.y), 1e-3);
+    };
 
     const auto& pp = car.powertrain;
     double iceMax = 0.0;
@@ -152,7 +157,7 @@ void computeSpeedProfile(RacingLine& line, const CarParams& car, const LapSimOpt
             const double rearLoad = m * g * (1.0 - car.chassis.weightFront) + q * cla * balRear;
             const double traction = mu(muX0, lsX, m * g + q * cla) * rearLoad / m;
             const double ellipse = std::sqrt(std::max(0.0, 1.0 - sq(latUsage(i, vi))));
-            const double a = std::min(power / (m * std::max(vi, 1.0)), traction) * ellipse - q * cda / m;
+            const double a = std::min(power / (m * std::max(vi, 1.0)), traction) * ellipse - q * cda / m - g * grade(i);
             const double vNext = std::sqrt(std::max(0.0, vi * vi + 2.0 * a * seg(i)));
             v[j] = std::min(v[j], std::max(vNext, 1.0));
         }
@@ -162,7 +167,7 @@ void computeSpeedProfile(RacingLine& line, const CarParams& car, const LapSimOpt
             const double q = 0.5 * rho * vj * vj;
             const double load = m * g + q * A.claCorner;
             const double ellipse = std::sqrt(std::max(0.0, 1.0 - sq(latUsage(j, vj))));
-            const double a = mu(muX0, lsX, load) * load / m * ellipse + q * A.cdaCorner / m;
+            const double a = std::max(0.5, mu(muX0, lsX, load) * load / m * ellipse + q * A.cdaCorner / m + g * grade(i));
             const double vPrev = std::sqrt(vj * vj + 2.0 * a * seg(i));
             v[i] = std::min(v[i], vPrev);
         }

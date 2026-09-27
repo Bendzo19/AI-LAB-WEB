@@ -136,6 +136,7 @@ bool CarParams::fromIni(const IniFile& ini, CarParams* out, std::string* error,
     CarParams c;
     Reader r(ini, error);
     c.name = ini.getString("car.name", "unnamed");
+    c.description = ini.getString("car.description", "");
 
     auto& ch = c.chassis;
     r.num("chassis.mass_kg", &ch.mass);
@@ -171,6 +172,10 @@ bool CarParams::fromIni(const IniFile& ini, CarParams* out, std::string* error,
     r.mm("aero.cop_height_mm", &a.copHeight);
     r.mm("aero.front_floor_x_mm", &a.frontFloorX);
     r.mm("aero.rear_floor_x_mm", &a.rearFloorX);
+    // Optional keys (defaults suit the 2026 active-aero car).
+    a.straightModeZonesOnly = ini.getBool("aero.straight_mode_zones_only", a.straightModeZonesOnly);
+    a.straightModeLabel = ini.getString("aero.straight_mode_label", a.straightModeLabel);
+    a.cornerModeLabel = ini.getString("aero.corner_mode_label", a.cornerModeLabel);
 
     auto& p = c.powertrain;
     r.list("powertrain.ice_rpm", &p.iceRpm);
@@ -199,6 +204,8 @@ bool CarParams::fromIni(const IniFile& ini, CarParams* out, std::string* error,
     r.num("powertrain.harvest_per_lap_mj", &p.harvestPerLap, 1.0e6);
     r.num("powertrain.mguk_efficiency", &p.mgukEfficiency);
     r.num("powertrain.coast_harvest_kw", &p.coastHarvestPower, 1000.0);
+    if (ini.has("powertrain.deploy_per_lap_mj")) r.num("powertrain.deploy_per_lap_mj", &p.deployPerLap, 1.0e6);
+    if (ini.has("powertrain.mguh_harvest_kw")) r.num("powertrain.mguh_harvest_kw", &p.mguhHarvestPower, 1000.0);
     r.num("powertrain.fuel_kg", &p.fuelMass);
     r.num("powertrain.fuel_lhv_mj_per_kg", &p.fuelLhv, 1.0e6);
     r.num("powertrain.ice_thermal_efficiency", &p.iceThermalEfficiency);
@@ -223,6 +230,11 @@ bool CarParams::fromIni(const IniFile& ini, CarParams* out, std::string* error,
     r.mm("steering.weight_centering_mm", &s.weightCentering);
     r.num("steering.power_assist", &s.powerAssist);
     r.positive("steering.ratio", s.ratio);
+
+    if (const auto liv = ini.getList("visual.livery_rgb")) {
+        if (liv->size() == 3) for (int i = 0; i < 3; ++i) c.visual.livery[i] = static_cast<float>(clamp((*liv)[i], 0.0, 1.0));
+    }
+    c.visual.modelConfig = ini.getString("visual.model_config", c.visual.modelConfig);
 
     if (!r.ok()) return false;
 

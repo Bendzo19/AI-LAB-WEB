@@ -108,6 +108,7 @@ void Vehicle::resetAt(double s, double d, double speed, int gear) {
     pt.shiftRefused = false;
     pt.clutchEngagement = speed > 5.0 ? 1.0 : 0.0;
     pt.lapHarvest = 0.0;
+    pt.lapDeploy = 0.0;
     const double wheelSideOmega = std::fabs(totalRatio(pt.gear) * speed / p_.rear.tyre.radius);
     pt.engineOmega = std::max(wheelSideOmega, rpmToRad(p_.powertrain.idleRpm));
 }
@@ -121,7 +122,13 @@ double Vehicle::damperForce(const AxleParams& a, double v) const {
 }
 
 void Vehicle::updateAero(double dt, const DriverInputs& in) {
-    if (in.aeroToggle) st_.aeroStraightRequested = !st_.aeroStraightRequested;
+    // DRS-style cars may only open the flap inside the track's zones; once
+    // open it stays open until the driver brakes (as in F1).
+    st_.aeroZone = !p_.aero.straightModeZonesOnly || track_->inAeroZone(st_.wheels[FL].groundS);
+    if (in.aeroToggle) {
+        if (st_.aeroStraightRequested) st_.aeroStraightRequested = false;
+        else if (st_.aeroZone) st_.aeroStraightRequested = true;
+    }
     // The straight-line mode closes automatically on the brakes.
     if (st_.brake > 0.05) st_.aeroStraightRequested = false;
     const double target = st_.aeroStraightRequested ? 1.0 : 0.0;
@@ -521,7 +528,8 @@ void Vehicle::solveDriveline(double dt, const std::array<double, 4>& tyreTorque)
     double deployScale = 1.0;
     if (pt.ersMode == ErsMode::Balanced) deployScale = 0.85 * smoothstep(0.10, 0.45, socFrac);
     else if (pt.ersMode == ErsMode::Harvest) deployScale = 0.0;
-    if (driveConnected && S.throttle > 0.6 && pt.soc > 0.0 && S.brake < 0.02 && deployScale > 0.0) {
+    if (driveConnected && S.throttle > 0.6 && pt.soc > 0.0 && S.brake < 0.02 && deployScale > 0.0 &&
+        pt.lapDeploy < pp.deployPerLap) {
         const double power = pp.mgukMaxPower * taper * deployScale * smoothstep(0.6, 0.98, S.throttle);
         mguk = std::min(power / omegaE, pp.mgukMaxTorque);
     } else if (driveConnected && harvestRoom > 0.0 && S.brake >= 0.02 && rearOmega > 5.0) {
@@ -627,9 +635,14 @@ void Vehicle::solveDriveline(double dt, const std::array<double, 4>& tyreTorque)
     pt.mgukPower = mechPower;
     if (mechPower > 0.0) {
         pt.soc = std::max(0.0, pt.soc - mechPower / pp.mgukEfficiency * dt);
+        pt.lapDeploy += mechPower * dt;
     } else if (mechPower < 0.0) {
         pt.soc = std::min(pp.batteryWindow, pt.soc - mechPower * pp.mgukEfficiency * dt);
         pt.lapHarvest -= mechPower * dt;
+    }
+    // MGU-H: exhaust energy recovered at full throttle (not limited per lap).
+    if (pp.mguhHarvestPower > 0.0 && S.throttle > 0.9 && speed > 25.0) {
+        pt.soc = std::min(pp.batteryWindow, pt.soc + pp.mguhHarvestPower * dt);
     }
     if (ice > 0.0) {
         const double fuelFlow = ice * pt.engineOmega / (pp.iceThermalEfficiency * pp.fuelLhv);

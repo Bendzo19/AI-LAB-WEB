@@ -85,3 +85,20 @@ TEST_CASE(track_rejects_bad_files) {
     CHECK(err.find("360") != std::string::npos);
     std::remove(path.c_str());
 }
+
+TEST_CASE(track_query_is_exact_on_steep_slopes) {
+    // Regression: the ground under a wheel must not shift along the lap on a
+    // 12% climb (Red Bull Ring T1), otherwise the tyres see a wrong height.
+    Track t;
+    std::string err;
+    CHECK(Track::load(th::dataPath("tracks/red_bull_ring.csv"), &t, &err));
+    t.setBumpScale(0.0);
+    for (double s = 370.0; s < 420.0; s += 3.7) {
+        for (double d : {-0.8, 0.0, 0.8}) {
+            const Vec3 ground = t.positionAt(s, d);
+            const GroundHit h = t.query(ground + Vec3{0.0, 0.0, 0.35});
+            CHECK(std::fabs(t.deltaS(s, h.s)) < 0.05);
+            CHECK(std::fabs(h.height - ground.z) < 0.003);
+        }
+    }
+}
