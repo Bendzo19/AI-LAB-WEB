@@ -6,3 +6,5 @@ config/controls.ini
 *.user
 dist/
 *.blend1
+private/
+ac_laps/

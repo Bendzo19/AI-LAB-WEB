@@ -51,3 +51,22 @@ tímy so simulátormi, len s oveľa hustejšími dátami.
 | **Laserové skeny tratí** (presnosť ~1 cm) | nerovnosti a obrubníky vo volante | komerčné (predávajú ich firmy, ktoré skenujú pre iRacing/rF2); alternatíva: vlastné lidarové mapy štátov + fotogrametria z drona pre menšie trate |
 | **Telemetria z vlastného simulátora s reálnym jazdcom** | ladenie FFB a „pocitu“ | ty na volante + záznam CSV z každého kola |
 | **Aero mapa** | správanie pri zmene svetlej výšky, v šmyku | CFD (OpenFOAM) na zjednodušenom modeli auta – náročné, ale možné |
+
+## Porovnanie s Assetto Corsa (telemetria z AC)
+
+AC neukladá telemetriu do súborov – posiela ju počas jazdy cez zdieľanú
+pamäť Windows. Skript `scripts/ac_telemetry.py` ju nahráva (~300 vzoriek/s)
+a každé dokončené kolo uloží ako CSV v rovnakom formáte ako naša hra:
+
+```bat
+cd f1sim\scripts
+python ac_telemetry.py                 :: spusti pred jazdou v AC, Ctrl+C ukončí
+python compare_laps.py ac_laps\<kolo_z_AC>.csv ..\telemetry\<kolo_zo_sim>.csv --labels AC SIM --out porovnanie.png
+```
+
+Potrebné: Windows, Python 3, bežiace AC (akékoľvek auto/trať). Do AC sa nič
+neinštaluje. Pre porovnanie jazdi v oboch hrách rovnakú trať (Red Bull Ring).
+
+Fyzikálne súbory áut z AC (napr. rozbalené cez Content Manager) patria do
+priečinka `private/` – je v `.gitignore`, lebo repozitár je verejný a dáta
+Kunosu ani cudzích módov sa nesmú zverejniť.
